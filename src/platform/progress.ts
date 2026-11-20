@@ -19,3 +19,20 @@ export function saveProgress(key: string, ids: readonly string[]): void {
     // Приватный режим и переполненное хранилище не должны останавливать игру.
   }
 }
+
+
+export function saveQuizPassed(storageKey: string): void {
+  try {
+    localStorage.setItem(`${storageKey}:quiz`, 'passed')
+  } catch {
+    // ignore
+  }
+}
+
+export function isQuizPassed(storageKey: string): boolean {
+  try {
+    return localStorage.getItem(`${storageKey}:quiz`) === 'passed'
+  } catch {
+    return false
+  }
+}

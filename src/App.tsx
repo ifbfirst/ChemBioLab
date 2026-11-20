@@ -1,7 +1,7 @@
 import { Component, useState, type ReactNode } from 'react'
 import { Experience } from './game/Experience'
 import { GameProvider } from './game/state'
-import { loadProgress } from './platform/progress'
+import { isQuizPassed, loadProgress } from './platform/progress'
 import { getLab, labPacks } from './platform/registry'
 
 class WebGLGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -49,6 +49,13 @@ const CARD_META: Record<
     title: 'Двойная спираль ДНК',
     desc: 'Комплементарность А–Т / Г–Ц и сборка нити иРНК',
     totalSteps: 3,
+  },
+  'bio-division-3d': {
+    icon: '🧫',
+    badge: '10–11 класс • 3D • ЦТ/ЦЭ',
+    title: 'Митоз и Мейоз',
+    desc: 'Сравни деление клетки в 3D: кроссинговер, расхождение хромосом и расчёт наборов n и c',
+    totalSteps: 8,
   },
   'chem-indicators': {
     icon: '🧪',
@@ -102,7 +109,7 @@ export function App() {
   const allPacks = Object.values(labPacks)
   const completedLabsCount = allPacks.filter((p) => {
     const total = CARD_META[p.id]?.totalSteps ?? 1
-    return loadProgress(p.storageKey).length >= total
+    return loadProgress(p.storageKey).length >= total && isQuizPassed(p.storageKey)
   }).length
 
   const visibleLabs = allPacks.filter((pack) =>
@@ -119,7 +126,6 @@ export function App() {
       }}
     >
       <div style={{ maxWidth: '1040px', margin: '0 auto' }}>
-        {/* Минималистичная шапка */}
         <header
           style={{
             display: 'flex',
@@ -139,13 +145,15 @@ export function App() {
               </span>
               <span style={{ color: 'var(--line)' }}>•</span>
               <span style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                Пройдено тем: <strong style={{ color: 'var(--accent)' }}>{completedLabsCount} из {allPacks.length}</strong>
+                Пройдено тем:{' '}
+                <strong style={{ color: 'var(--accent)' }}>
+                  {completedLabsCount} из {allPacks.length}
+                </strong>
               </span>
             </div>
             <h1 style={{ fontSize: '34px', margin: 0 }}>Виртуальные лаборатории</h1>
           </div>
 
-          {/* Компактный сегментированный фильтр */}
           <div
             style={{
               display: 'inline-flex',
@@ -185,7 +193,6 @@ export function App() {
           </div>
         </header>
 
-        {/* Сетка компактных кликабельных карточек */}
         <div
           style={{
             display: 'grid',
@@ -197,7 +204,13 @@ export function App() {
             const meta = CARD_META[pack.id]
             const doneCount = loadProgress(pack.storageKey).length
             const total = meta?.totalSteps ?? 1
-            const isFinished = doneCount >= total
+            const quizDone = isQuizPassed(pack.storageKey)
+            const isFinished = doneCount >= total && quizDone
+            const needsQuiz = doneCount >= total && !quizDone
+            const progressPercent = Math.min(
+              100,
+              ((Math.min(doneCount, total) + (quizDone ? 1 : 0)) / (total + 1)) * 100,
+            )
             const isHovered = hoveredId === pack.id
             const accentColor = pack.subject === 'chemistry' ? '#38bdf8' : 'var(--accent)'
 
@@ -215,12 +228,8 @@ export function App() {
                 style={{
                   padding: '22px',
                   borderRadius: '20px',
-                  border: isHovered
-                    ? `1px solid ${accentColor}`
-                    : '1px solid var(--line)',
-                  background: isHovered
-                    ? 'rgba(18, 44, 32, 0.92)'
-                    : 'rgba(10, 26, 18, 0.75)',
+                  border: isHovered ? `1px solid ${accentColor}` : '1px solid var(--line)',
+                  background: isHovered ? 'rgba(18, 44, 32, 0.92)' : 'rgba(10, 26, 18, 0.75)',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
@@ -231,7 +240,6 @@ export function App() {
                 }}
               >
                 <div>
-                  {/* Верхняя строка: Иконка + Бейдж + Статус */}
                   <div
                     style={{
                       display: 'flex',
@@ -284,7 +292,7 @@ export function App() {
                       >
                         ✓ Готово
                       </span>
-                    ) : doneCount > 0 ? (
+                    ) : doneCount > 0 && doneCount < total ? (
                       <span
                         style={{
                           fontSize: '12px',
@@ -296,58 +304,63 @@ export function App() {
                         {doneCount}/{total}
                       </span>
                     ) : null}
-                    </div>
-  
-                    {/* Заголовок и краткое описание */}
-                    <h2 style={{ fontSize: '20px', marginBottom: '6px' }}>
-                      {meta?.title ?? pack.title}
-                    </h2>
-                    <p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)', lineHeight: 1.45 }}>
-                      {meta?.desc}
-                    </p>
                   </div>
-  
-                  {/* Нижняя полоска прогресса + стрелка */}
-                  <div>
+
+                  <h2 style={{ fontSize: '20px', marginBottom: '6px' }}>
+                    {meta?.title ?? pack.title}
+                  </h2>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)', lineHeight: 1.45 }}>
+                    {meta?.desc}
+                  </p>
+                </div>
+
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: isHovered ? accentColor : 'var(--muted)',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <span>
+                      {isFinished
+                        ? 'Повторить опыт'
+                        : needsQuiz
+                        ? 'Сдать финальный тест'
+                        : doneCount > 0
+                        ? 'Продолжить'
+                        : 'Начать опыт'}
+                    </span>
+                    <span>→</span>
+                  </div>
+                  <div
+                    style={{
+                      height: '4px',
+                      borderRadius: '99px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      overflow: 'hidden',
+                    }}
+                  >
                     <div
                       style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: isHovered ? accentColor : 'var(--muted)',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      <span>{isFinished ? 'Повторить опыт' : doneCount > 0 ? 'Продолжить' : 'Начать опыт'}</span>
-                      <span>→</span>
-                    </div>
-                    <div
-                      style={{
-                        height: '4px',
+                        height: '100%',
+                        width: `${progressPercent}%`,
+                        background: accentColor,
                         borderRadius: '99px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        overflow: 'hidden',
+                        transition: 'width 0.3s ease',
                       }}
-                    >
-                      <div
-                        style={{
-                          height: '100%',
-                          width: `${Math.min(100, (doneCount / total) * 100)}%`,
-                          background: accentColor,
-                          borderRadius: '99px',
-                          transition: 'width 0.3s ease',
-                        }}
-                      />
-                    </div>
+                    />
                   </div>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
       </div>
-    )
-  }
-  
+    </div>
+  )
+}

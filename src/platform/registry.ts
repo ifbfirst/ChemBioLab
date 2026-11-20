@@ -5,6 +5,7 @@ import { chemQualitativePack } from '../labs/chemistry/qualitativePack'
 import { bioCellPack } from '../labs/biology/cellPack'
 import { chemDetectivePack } from '../labs/chemistry/detectivePack'
 import { bioDnaPack } from '../labs/biology/dnaPack'
+import { bioDivisionPack } from '../labs/biology/divisionPack'
 
 export const labPacks: Record<string, LabPack> = {
   photosynthesis: photosynthesisPack,
@@ -13,6 +14,7 @@ export const labPacks: Record<string, LabPack> = {
   'bio-cell': bioCellPack,
   'chem-detective': chemDetectivePack,
   'bio-dna-3d': bioDnaPack,
+  'bio-division-3d': bioDivisionPack,
 }
 
 

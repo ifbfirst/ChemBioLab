@@ -26,7 +26,8 @@ export function Hud() {
   }, [quizOpen])
 
   const fact = state.panelFactId ? facts[state.panelFactId] : undefined
-  const is3D = pack.id === 'photosynthesis' || pack.id === 'bio-dna-3d'
+  const is3D = pack.id === 'photosynthesis' || pack.id === 'bio-dna-3d' || pack.id === 'bio-division-3d'
+  const hasLaunchStep = pack.id === 'photosynthesis' || pack.id === 'bio-dna-3d'
   const is3DLeaf = pack.id === 'photosynthesis'
   const is3DDna = pack.id === 'bio-dna-3d'
 
@@ -92,7 +93,7 @@ export function Hud() {
         ) : is3DDna && state.synthesis ? (
           <div style={{ marginTop: '10px', fontSize: '13px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>
             <div><span style={{ color: '#94a3b8' }}>●</span> Разрыв водородных связей ДНК</div>
-            <div><span style={{ color: '#dff56a' }}>●</span> Сборка одноцепочечной нити иРНК</div>
+            <div><span style={{ color: '#fb7185' }}>●</span> Сборка одноцепочечной нити иРНК</div>
           </div>
         ) : is3D ? (
           <p className="hint">Мышь — вращать, колёсико — уменьшить и увеличить</p>
@@ -122,19 +123,25 @@ export function Hud() {
         </aside>
       ) : null}
 
-      {is3D && view.done && !state.synthesis ? (
+      {hasLaunchStep && view.done && !state.synthesis ? (
         <button type="button" className="launch" onClick={() => api.launch()}>
           {is3DDna ? 'Запустить транскрипцию (иРНК)' : 'Запустить фотосинтез'}
         </button>
       ) : null}
 
-      {(is3D && state.synthesis) || (!is3D && view.done) ? (
+      {(hasLaunchStep && state.synthesis) || (!hasLaunchStep && view.done) ? (
         <button type="button" className="launch" onClick={() => setQuizOpen(true)}>
           Пройти тест по теме (A/B/C/D)
         </button>
       ) : null}
 
-      {quizOpen ? <LeafQuizModal labId={pack.id} subject={pack.subject} onClose={() => setQuizOpen(false)} /> : null}
+      {quizOpen ? (
+        <LeafQuizModal
+          labId={pack.id}
+          storageKey={pack.storageKey}
+          onClose={() => setQuizOpen(false)}
+        />
+      ) : null}
       {pack.subject === 'chemistry' ? <ChemReferenceDrawer /> : null}
     </div>
   )

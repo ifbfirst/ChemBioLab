@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { saveQuizPassed } from '../../platform/progress'
 
 export interface QuizQuestion {
   question: string
@@ -42,17 +43,6 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
       correct: 'C',
       explanation: 'Вода поступает по ксилеме, а органические вещества (глюкоза) отводятся по флоэме.',
     },
-    {
-      question: 'Какие вещества образуются в хлоропластах в результате фотосинтеза?',
-      options: [
-        { key: 'A', text: 'Вода и углекислый газ' },
-        { key: 'B', text: 'Углекислый газ и азот' },
-        { key: 'C', text: 'Глюкоза (органическое вещество) и кислород (O₂)' },
-        { key: 'D', text: 'Только минеральные соли' },
-      ],
-      correct: 'C',
-      explanation: 'На свету из CO₂ и H₂O в хлоропластах образуются органические вещества, а кислород выходит через устьице.',
-    },
   ],
 
   'bio-cell': [
@@ -65,7 +55,7 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
         { key: 'D', text: 'Оформленное ядро' },
       ],
       correct: 'B',
-      explanation: 'Рибосомы отвечают за синтез белка и есть как у эукариот (растений, животных), так и у прокариот (бактерий).',
+      explanation: 'Рибосомы отвечают за синтез белка и есть как у эукариот, так и у прокариот (бактерий).',
     },
     {
       question: 'Какая структура есть у растительной и бактериальной клеток, но полностью отсутствует у животной?',
@@ -91,6 +81,78 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
     },
   ],
 
+  'bio-dna-3d': [
+    {
+      question: 'По правилу комплементарности в молекуле ДНК аденин (А) всегда соединяется с:',
+      options: [
+        { key: 'A', text: 'Гуанином (Г)' },
+        { key: 'B', text: 'Цитозином (Ц)' },
+        { key: 'C', text: 'Тимином (Т)' },
+        { key: 'D', text: 'Урацилом (У)' },
+      ],
+      correct: 'C',
+      explanation: 'В ДНК Аденин (А) соединяется с Тимином (Т), а Гуанин (Г) — с Цитозином (Ц). Урацил (У) есть только в РНК.',
+    },
+    {
+      question: 'Если в фрагменте двуцепочечной ДНК на долю гуанина (Г) приходится 20%, то сколько процентов составляет аденин (А)?',
+      options: [
+        { key: 'A', text: '20%' },
+        { key: 'B', text: '30%' },
+        { key: 'C', text: '40%' },
+        { key: 'D', text: '60%' },
+      ],
+      correct: 'B',
+      explanation: 'По правилу Чаргаффа Г = Ц = 20% (вместе 40%). На пару А + Т остаётся 60%, значит А = 30%.',
+    },
+    {
+      question: 'Какой нуклеотид встраивается в цепь иРНК при транскрипции напротив аденина (А) матричной цепи ДНК?',
+      options: [
+        { key: 'A', text: 'Тимин (Т)' },
+        { key: 'B', text: 'Урацил (У)' },
+        { key: 'C', text: 'Цитозин (Ц)' },
+        { key: 'D', text: 'Гуанин (Г)' },
+      ],
+      correct: 'B',
+      explanation: 'В молекуле РНК тимин заменён на урацил, поэтому напротив А в ДНК ставится У в иРНК.',
+    },
+  ],
+
+  'bio-division-3d': [
+    {
+      question: 'В какой фазе деления клетки происходит конъюгация гомологичных хромосом и кроссинговер?',
+      options: [
+        { key: 'A', text: 'В метафазе митоза' },
+        { key: 'B', text: 'В профазе I мейоза' },
+        { key: 'C', text: 'В анафазе I мейоза' },
+        { key: 'D', text: 'В телофазе митоза' },
+      ],
+      correct: 'B',
+      explanation: 'Сближение гомологичных хромосом (конъюгация) и обмен участками (кроссинговер) происходят в профазе I мейоза.',
+    },
+    {
+      question: 'Какой хромосомный набор (n) и число молекул ДНК (c) имеет клетка в анафазе митоза?',
+      options: [
+        { key: 'A', text: '2n2c' },
+        { key: 'B', text: '2n4c' },
+        { key: 'C', text: '4n4c' },
+        { key: 'D', text: '1n2c' },
+      ],
+      correct: 'C',
+      explanation: 'В анафазе митоза сестринские хроматиды расходятся и становятся самостоятельными хромосомами — набор удваивается до 4n4c.',
+    },
+    {
+      question: 'Что расходится к полюсам клетки в анафазе I мейоза?',
+      options: [
+        { key: 'A', text: 'Однохроматидные сестринские хроматиды' },
+        { key: 'B', text: 'Целые двухроматидные гомологичные хромосомы' },
+        { key: 'C', text: 'Только центриоли' },
+        { key: 'D', text: 'Молекулы иРНК' },
+      ],
+      correct: 'B',
+      explanation: 'В анафазе I мейоза к полюсам отходят целые двухроматидные хромосомы (набор 2n4c), благодаря чему в телофазе образуются гаплоидные клетки 1n2c.',
+    },
+  ],
+
   'chem-indicators': [
     {
       question: 'Какой цвет приобретает бесцветный фенолфталеин в растворе гидроксида натрия (NaOH)?',
@@ -101,7 +163,7 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
         { key: 'D', text: 'Остаётся бесцветным' },
       ],
       correct: 'B',
-      explanation: 'Фенолфталеин — специфический индикатор на щелочную среду (ионы OH⁻), в которой он становится малиновым.',
+      explanation: 'Фенолфталеин в щелочной среде (ионы OH⁻) становится ярко-малиновым.',
     },
     {
       question: 'Какие ионы обусловливают кислую среду в водном растворе соляной кислоты (HCl)?',
@@ -161,40 +223,6 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
       correct: 'C',
       explanation: 'Угольная кислота H₂CO₃ сразу распадается на H₂O и углекислый газ CO₂↑.',
     },
-  ],  'bio-dna-3d': [
-    {
-      question: 'По правилу комплементарности в молекуле ДНК аденин (А) всегда соединяется с:',
-      options: [
-        { key: 'A', text: 'Гуанином (Г)' },
-        { key: 'B', text: 'Цитозином (Ц)' },
-        { key: 'C', text: 'Тимином (Т)' },
-        { key: 'D', text: 'Урацилом (У)' },
-      ],
-      correct: 'C',
-      explanation: 'В ДНК Аденин (А) образует две водородные связи с Тимином (Т), а Гуанин (Г) — три связи с Цитозином (Ц). Урацил (У) встречается только в РНК.',
-    },
-    {
-      question: 'Если в фрагменте двуцепочечной ДНК на долю нуклеотидов с гуанином (Г) приходится 20%, то сколько процентов составляет аденин (А)?',
-      options: [
-        { key: 'A', text: '20%' },
-        { key: 'B', text: '30%' },
-        { key: 'C', text: '40%' },
-        { key: 'D', text: '60%' },
-      ],
-      correct: 'B',
-      explanation: 'По правилу Чаргаффа Г = Ц = 20% (вместе 40%). На пару А + Т остаётся 60%, значит А = 30%.',
-    },
-    {
-      question: 'Какой нуклеотид встраивается в цепь иРНК при транскрипции напротив аденина (А) матричной цепи ДНК?',
-      options: [
-        { key: 'A', text: 'Тимин (Т)' },
-        { key: 'B', text: 'Урацил (У)' },
-        { key: 'C', text: 'Цитозин (Ц)' },
-        { key: 'D', text: 'Гуанин (Г)' },
-      ],
-      correct: 'B',
-      explanation: 'В молекуле РНК тимин заменён на урацил, поэтому напротив А в ДНК ставится У в иРНК.',
-    },
   ],
 
   'chem-detective': [
@@ -218,7 +246,7 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
         { key: 'D', text: 'Лакмусом' },
       ],
       correct: 'B',
-      explanation: 'При добавлении кислоты к карбонату натрия наблюдается бурное выделение углекислого газа CO₂↑, тогда как со щёлочью видимых признаков нет.',
+      explanation: 'При добавлении кислоты к карбонату натрия выделяется углекислый газ CO₂↑, тогда как со щёлочью видимых признаков нет.',
     },
     {
       question: 'Какой осадок выпадает при добавлении хлорида бария (BaCl₂) к раствору сульфата меди(II) CuSO₄?',
@@ -232,15 +260,15 @@ const QUESTIONS_BY_LAB: Record<string, QuizQuestion[]> = {
       explanation: 'Ba²⁺ + SO₄²⁻ → BaSO₄↓ — качественная реакция на сульфат-ионы.',
     },
   ],
-
 }
 
 export function LeafQuizModal({
   labId = 'photosynthesis',
+  storageKey,
   onClose,
 }: {
   labId?: string
-  subject?: 'biology' | 'chemistry'
+  storageKey?: string
   onClose: () => void
 }) {
   const questions = QUESTIONS_BY_LAB[labId] ?? QUESTIONS_BY_LAB.photosynthesis
@@ -263,6 +291,9 @@ export function LeafQuizModal({
       setSelected(null)
     } else {
       setFinished(true)
+      if (storageKey && score >= questions.length - 1) {
+        saveQuizPassed(storageKey)
+      }
     }
   }
 
@@ -327,7 +358,7 @@ export function LeafQuizModal({
             {selected && <p className="note">{current.explanation}</p>}
 
             <div className="actions" style={{ justifyContent: 'flex-end' }}>
-            {selected && (
+              {selected && (
                 <button type="button" className="primary" onClick={handleNext}>
                   {step + 1 < questions.length ? 'Следующий вопрос →' : 'Результат'}
                 </button>
@@ -341,11 +372,9 @@ export function LeafQuizModal({
               Результат: {score} из {questions.length}
             </h2>
             <p>
-              {score === questions.length
-                ? 'Отлично! Тема усвоена на 100%.'
-                : score >= 2
-                ? 'Хороший результат! Закрепите теорию ещё раз при необходимости.'
-                : 'Попробуйте ещё раз — повторите опыты в лаборатории и вернитесь к тесту.'}
+              {score >= questions.length - 1
+                ? 'Отлично! Тема зачтена как полностью пройденная.'
+                : 'Для зачёта темы нужно ответить правильно минимум на 2 вопроса из 3. Попробуйте ещё раз!'}
             </p>
             <div className="actions" style={{ justifyContent: 'center' }}>
               <button type="button" className="primary" onClick={onClose}>
