@@ -1,5 +1,5 @@
-import { LeafWorld } from '../../game/world/LeafWorld'
-import type { LabPack } from '../../platform/types'
+import { LeafWorld } from '../../../../game/world/LeafWorld'
+import type { LabPack } from '../../../../platform/types'
 import { photosynthesisFacts } from './facts'
 import { exploreLeafMission, photosynthesisRules } from './logic'
 import { leafBounds, leafObjects, leafSpawn } from './objects'

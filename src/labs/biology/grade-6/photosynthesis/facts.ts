@@ -1,4 +1,4 @@
-import type { Fact } from '../../platform/types'
+import type { Fact } from '../../../../platform/types'
 
 /**
  * Тексты для 6 класса: разрез листовой пластинки и фотосинтез.

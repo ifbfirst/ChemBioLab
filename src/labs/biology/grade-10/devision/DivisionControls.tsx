@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useLab } from '../../game/state'
+import { useLab } from '../../../../game/state'
 
 export type DivisionMode = 'mitosis' | 'meiosis1'
 export type DivisionPhase = 'prophase' | 'metaphase' | 'anaphase' | 'telophase'

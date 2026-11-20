@@ -1,4 +1,4 @@
-import type { InteractableDef, MissionDefinition, MissionRules, MissionView } from '../../platform/types'
+import type { InteractableDef, MissionDefinition, MissionRules, MissionView } from '../../../../platform/types'
 
 const tissueIds = ['epidermis', 'palisade', 'vein', 'stoma'] as const
 

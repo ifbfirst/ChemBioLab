@@ -10,7 +10,7 @@ import {
   type Group,
   type Mesh,
 } from 'three'
-import type { Vec3 } from '../../platform/types'
+import type { Vec3 } from '../../../../platform/types'
 import type { DivisionMode, DivisionPhase } from './DivisionControls'
 
 const PHASE_TITLES: Record<DivisionPhase, string> = {

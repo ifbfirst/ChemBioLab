@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { saveQuizPassed } from '../../platform/progress'
-import { DEFAULT_QUIZZES, fetchLabQuiz, type QuizQuestion } from '../../platform/quizzes'
+import { fetchLabQuiz, type QuizQuestion } from '../../platform/quizzes'
+
 
 export function LeafQuizModal({
   labId = 'photosynthesis',
@@ -11,9 +12,8 @@ export function LeafQuizModal({
   storageKey?: string
   onClose: () => void
 }) {
-  const [questions, setQuestions] = useState<QuizQuestion[]>(
-    () => DEFAULT_QUIZZES[labId] ?? DEFAULT_QUIZZES.photosynthesis,
-  )
+  const [questions, setQuestions] = useState<QuizQuestion[]>([])
+
   const [loading, setLoading] = useState(true)
   const [step, setStep] = useState(0)
   const [selected, setSelected] = useState<'A' | 'B' | 'C' | 'D' | null>(null)

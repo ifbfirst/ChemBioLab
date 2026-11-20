@@ -7,7 +7,7 @@ import type {
     MissionRules,
     MissionView,
     Vec3,
-  } from '../../platform/types'
+  } from '../../../../platform/types'
   import { ChemIndicatorsWorld } from './ChemIndicatorsWorld'
   
   const stepIds = ['acid-litmus', 'alkali-phenol', 'water-methyl'] as const

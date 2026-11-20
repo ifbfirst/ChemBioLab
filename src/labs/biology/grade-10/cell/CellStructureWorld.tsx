@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLab } from '../../game/state'
+import { useLab } from '../../../../game/state'
 
 type CellType = 'plant' | 'animal' | 'bacteria'
 

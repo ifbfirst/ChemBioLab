@@ -1,4 +1,4 @@
-import type { Vec3 } from '../../platform/types'
+import type { Vec3 } from '../../../../platform/types'
 
 /** Учебный разрез листовой пластинки. Координаты только для сцены, не для научных текстов. */
 export const palisadeX = [-3.15, -2.1, -1.05, 0, 1.05, 2.1] as const

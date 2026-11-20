@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",  
+   "seed": "node seed-data/upload.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.2",
@@ -20,6 +21,7 @@
     "@types/react-dom": "^19.3.0",
     "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "firebase-admin": "^14.5.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   }

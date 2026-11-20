@@ -1,14 +1,6 @@
-import type {
-    Bounds,
-    Fact,
-    InteractableDef,
-    LabPack,
-    MissionDefinition,
-    MissionRules,
-    MissionView,
-    Vec3,
-  } from '../../platform/types'
-  import { CellStructureWorld } from './CellStructureWorld'
+import { Bounds, Fact, InteractableDef, LabPack, MissionDefinition, MissionRules, MissionView, Vec3 } from "../../../../platform/types"
+import { CellStructureWorld } from "./CellStructureWorld"
+
   
   const stepIds = ['nucleus', 'chloroplast', 'vacuole', 'mitochondria', 'ribosome', 'cell-wall'] as const
   

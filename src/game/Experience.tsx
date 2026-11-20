@@ -3,13 +3,10 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitCamera } from './camera/OrbitCamera'
 import { Hud } from './ui/Hud'
 import { useLab } from './state'
-import { cameraFrames } from '../labs/photosynthesis/layout'
-import { Division3DWorld } from '../labs/biology/Division3DWorld'
-import {
-  DivisionControls,
-  type DivisionMode,
-  type DivisionPhase,
-} from '../labs/biology/DivisionControls'
+import { cameraFrames } from '../labs/biology/grade-6/photosynthesis/layout'
+import { DivisionControls, DivisionMode, DivisionPhase } from '../labs/biology/grade-10/devision/DivisionControls'
+import { Division3DWorld } from '../labs/biology/grade-10/devision/Division3DWorld'
+
 
 export function Experience() {
   const { pack, view } = useLab()

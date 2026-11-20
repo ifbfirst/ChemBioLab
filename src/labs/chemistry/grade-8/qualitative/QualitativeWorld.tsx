@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useLab } from '../../game/state'
+import { useLab } from '../../../../game/state'
 
 interface ReactionTube {
   id: string
@@ -138,7 +138,7 @@ export function QualitativeWorld() {
                 }}
                 onClick={() => handlePour(tube)}
               >
-                {isWrong ? 'Нет признаков реакции!' : done ? '✓ Реакция проведена' : '2. Прилить в пробирку'}
+                {isWrong ? 'Нет признаков реакции!' : done ? '✓ Реакция проведена' : '2. Добавить в пробирку'}
               </button>
 
               {/* Пробирка */}

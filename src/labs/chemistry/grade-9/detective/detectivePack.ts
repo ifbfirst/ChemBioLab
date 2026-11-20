@@ -7,7 +7,7 @@ import type {
     MissionRules,
     MissionView,
     Vec3,
-  } from '../../platform/types'
+  } from '../../../../platform/types'
   import { DetectiveWorld } from './DetectiveWorld'
   
   const stepIds = ['tube-0', 'tube-1', 'tube-2', 'tube-3'] as const

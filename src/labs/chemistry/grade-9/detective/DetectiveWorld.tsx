@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLab } from '../../game/state'
+import { useLab } from '../../../../game/state'
 
 type MysterySubstance = 'naoh' | 'hcl' | 'na2co3' | 'cuso4'
 type TestReagent = 'phenolphthalein' | 'naoh_drop' | 'hcl_drop' | 'bacl2_drop'

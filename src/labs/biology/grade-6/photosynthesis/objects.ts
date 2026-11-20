@@ -1,4 +1,4 @@
-import type { Bounds, InteractableDef, Vec3 } from '../../platform/types'
+import type { Bounds, InteractableDef, Vec3 } from '../../../../platform/types'
 import { layout } from './layout'
 
 /** Четыре ткани разреза. Каждая точка открывает свой научный текст. */

@@ -1,4 +1,4 @@
-import { useLab } from '../../game/state'
+import { useLab } from '../../../../game/state'
 
 const TUBES = [
   {

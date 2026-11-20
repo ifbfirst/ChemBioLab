@@ -7,7 +7,7 @@ import type {
     MissionRules,
     MissionView,
     Vec3,
-  } from '../../platform/types'
+  } from '../../../../platform/types'
   import { Division3DWorld } from './Division3DWorld'
   
   const stepIds = [

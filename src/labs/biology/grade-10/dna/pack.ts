@@ -1,14 +1,5 @@
-import type {
-    Bounds,
-    Fact,
-    InteractableDef,
-    LabPack,
-    MissionDefinition,
-    MissionRules,
-    MissionView,
-    Vec3,
-  } from '../../platform/types'
-  import { Dna3DWorld } from './Dna3DWorld'
+import { Dna3DWorld } from "./Dna3DWorld"
+import type { Fact, MissionDefinition, MissionRules, MissionView, InteractableDef, Bounds, Vec3, LabPack } from "../../../../platform/types"
   
   const stepIds = ['backbone', 'bases', 'transcription'] as const
   

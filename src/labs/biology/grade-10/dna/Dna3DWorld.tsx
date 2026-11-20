@@ -12,8 +12,8 @@ import {
   type InstancedMesh,
   type Mesh,
 } from 'three'
-import type { Vec3 } from '../../platform/types'
-import { useLab } from '../../game/state'
+import type { Vec3 } from '../../../../platform/types'
+import { useLab } from '../../../../game/state'
 
 const PAIRS = [
   { left: '#38bdf8', right: '#facc15', mrna: '#facc15' },

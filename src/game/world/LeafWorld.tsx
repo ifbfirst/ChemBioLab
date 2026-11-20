@@ -14,7 +14,7 @@ import {
   type Mesh,
 } from 'three'
 import type { Vec3 } from '../../platform/types'
-import { layout, palisadeX } from '../../labs/photosynthesis/layout'
+import { layout, palisadeX } from '../../labs/biology/grade-6/photosynthesis/layout'
 import { useLab } from '../state'
 
 /**

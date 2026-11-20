@@ -7,7 +7,7 @@ import type {
     MissionRules,
     MissionView,
     Vec3,
-  } from '../../platform/types'
+  } from '../../../../platform/types'
   import { QualitativeWorld } from './QualitativeWorld'
   
   const stepIds = ['cu-precipitate', 'fe-precipitate', 'cl-precipitate', 'co3-gas'] as const
