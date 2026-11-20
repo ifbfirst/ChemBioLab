@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
 import { auth, googleProvider } from '../../platform/firebase'
 import { pullCloudProgress } from '../../platform/progress'
+import { seedQuizzesToFirestore } from '../../platform/quizzes'
 
 export function AuthBar({ onSync }: { onSync: () => void }) {
   const [user, setUser] = useState<User | null>(null)
@@ -71,6 +72,24 @@ export function AuthBar({ onSync }: { onSync: () => void }) {
       >
         Выйти
       </button>
+      <button
+        type="button"
+        onClick={async () => {
+          await seedQuizzesToFirestore()
+          alert('Все 7 тестов успешно загружены в коллекцию quizzes в Firestore!')
+        }}
+        style={{
+          padding: '3px 8px',
+          borderRadius: '8px',
+          border: '1px solid var(--line)',
+          background: 'transparent',
+          color: 'var(--accent)',
+          fontSize: '11px',
+        }}
+      >
+        ↑ Залить тесты в БД
+      </button>
+
     </div>
   )
 }

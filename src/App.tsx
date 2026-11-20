@@ -3,6 +3,7 @@ import { Experience } from './game/Experience'
 import { GameProvider } from './game/state'
 import { isQuizPassed, loadProgress } from './platform/progress'
 import { getLab, labPacks } from './platform/registry'
+import { AuthBar } from './game/ui/AuthBar'
 
 class WebGLGuard extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -83,6 +84,7 @@ const CARD_META: Record<
 export function App() {
   const [labId, setLabId] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [, setSyncTick] = useState(0)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   if (labId) {
@@ -153,7 +155,7 @@ export function App() {
             </div>
             <h1 style={{ fontSize: '34px', margin: 0 }}>Виртуальные лаборатории</h1>
           </div>
-
+          <AuthBar onSync={() => setSyncTick((t) => t + 1)} />
           <div
             style={{
               display: 'inline-flex',
