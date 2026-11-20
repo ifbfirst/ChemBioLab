@@ -78,13 +78,15 @@ function reducer(state: GameState, action: Action): GameState {
         panelFactId: action.factId,
         focusingId: action.id,
       }
-    case 'launch':
-      return {
-        ...state,
-        synthesis: true,
-        panelFactId: 'photosynthesis',
-        focusingId: 'synthesis',
-      }
+      case 'launch':
+        return {
+          ...state,
+          synthesis: true,
+          panelFactId: null,
+          focusingId: 'home',
+        }
+  
+  
     case 'close-panel':
       return state.panelFactId ? { ...state, panelFactId: null } : state
     case 'finale':

@@ -9,7 +9,7 @@ export function Experience() {
   const Location = pack.Location
   const home = cameraFrames.home
 
-  if (pack.subject === 'chemistry') {
+  if (pack.subject === 'chemistry' || pack.id === 'bio-cell') {
     return (
       <div className="app">
         <Location markerIds={view.markerIds} />
