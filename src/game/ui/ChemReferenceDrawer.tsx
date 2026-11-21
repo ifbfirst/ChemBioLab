@@ -1,135 +1,206 @@
 import { useState } from 'react'
+import { BookOpen, FlaskConical, Grid, Sparkles, X } from 'lucide-react'
 
-type Solubility = 'Р' | 'М' | 'Н' | '—'
+type Tab = 'solubility' | 'indicators' | 'gases'
 
-const CATIONS = ['H⁺', 'Na⁺', 'K⁺', 'Ag⁺', 'Ca²⁺', 'Ba²⁺', 'Mg²⁺', 'Zn²⁺', 'Fe²⁺', 'Fe³⁺', 'Cu²⁺', 'Al³⁺']
-const ANIONS = ['OH⁻', 'Cl⁻', 'Br⁻', 'I⁻', 'NO₃⁻', 'SO₄²⁻', 'CO₃²⁻', 'PO₄³⁻']
+const CATIONS = ['H⁺', 'Na⁺', 'K⁺', 'NH₄⁺', 'Ba²⁺', 'Ca²⁺', 'Mg²⁺', 'Zn²⁺', 'Fe²⁺', 'Fe³⁺', 'Cu²⁺', 'Ag⁺']
 
-const TABLE: Record<string, Solubility[]> = {
-  'OH⁻':  ['Р', 'Р', 'Р', '—', 'М', 'Р', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н'],
-  'Cl⁻':  ['Р', 'Р', 'Р', 'Н', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р'],
-  'Br⁻':  ['Р', 'Р', 'Р', 'Н', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р'],
-  'I⁻':   ['Р', 'Р', 'Р', 'Н', 'Р', 'Р', 'Р', 'Р', 'Р', '—', '—', 'Р'],
-  'NO₃⁻': ['Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р'],
-  'SO₄²⁻':['Р', 'Р', 'Р', 'М', 'М', 'Н', 'Р', 'Р', 'Р', 'Р', 'Р', 'Р'],
-  'CO₃²⁻':['Р', 'Р', 'Р', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н', '—', '—', '—'],
-  'PO₄³⁻':['Р', 'Р', 'Р', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н', 'Н'],
-}
+const ANIONS: { ion: string; vals: Record<string, string> }[] = [
+  { ion: 'OH⁻', vals: { 'H⁺': 'H₂O', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': '↑NH₃', 'Ba²⁺': 'Р', 'Ca²⁺': 'М', 'Mg²⁺': 'Н', 'Zn²⁺': 'Н', 'Fe²⁺': 'Н', 'Fe³⁺': 'Н', 'Cu²⁺': 'Н', 'Ag⁺': '—' } },
+  { ion: 'Cl⁻', vals: { 'H⁺': 'Р', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': 'Р', 'Ba²⁺': 'Р', 'Ca²⁺': 'Р', 'Mg²⁺': 'Р', 'Zn²⁺': 'Р', 'Fe²⁺': 'Р', 'Fe³⁺': 'Р', 'Cu²⁺': 'Р', 'Ag⁺': 'Н↓' } },
+  { ion: 'SO₄²⁻', vals: { 'H⁺': 'Р', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': 'Р', 'Ba²⁺': 'Н↓', 'Ca²⁺': 'М', 'Mg²⁺': 'Р', 'Zn²⁺': 'Р', 'Fe²⁺': 'Р', 'Fe³⁺': 'Р', 'Cu²⁺': 'Р', 'Ag⁺': 'М' } },
+  { ion: 'CO₃²⁻', vals: { 'H⁺': '↑CO₂', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': 'Р', 'Ba²⁺': 'Н↓', 'Ca²⁺': 'Н↓', 'Mg²⁺': 'Н', 'Zn²⁺': 'Н', 'Fe²⁺': 'Н', 'Fe³⁺': '—', 'Cu²⁺': '—', 'Ag⁺': 'Н' } },
+  { ion: 'PO₄³⁻', vals: { 'H⁺': 'Р', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': 'Р', 'Ba²⁺': 'Н↓', 'Ca²⁺': 'Н↓', 'Mg²⁺': 'Н', 'Zn²⁺': 'Н', 'Fe²⁺': 'Н', 'Fe³⁺': 'Н', 'Cu²⁺': 'Н', 'Ag⁺': 'Н↓' } },
+  { ion: 'NO₃⁻', vals: { 'H⁺': 'Р', 'Na⁺': 'Р', 'K⁺': 'Р', 'NH₄⁺': 'Р', 'Ba²⁺': 'Р', 'Ca²⁺': 'Р', 'Mg²⁺': 'Р', 'Zn²⁺': 'Р', 'Fe²⁺': 'Р', 'Fe³⁺': 'Р', 'Cu²⁺': 'Р', 'Ag⁺': 'Р' } },
+]
 
-const METALS = ['Li', 'K', 'Ba', 'Ca', 'Na', 'Mg', 'Al', 'Zn', 'Fe', 'Ni', 'Sn', 'Pb', '(H₂)', 'Cu', 'Hg', 'Ag', 'Pt', 'Au']
-
-export function ChemReferenceDrawer() {
-  const [open, setOpen] = useState(false)
-
-  const getCellStyle = (val: Solubility) => {
-    if (val === 'Н') return { background: 'rgba(248, 113, 113, 0.25)', color: '#fca5a5', fontWeight: 700 }
-    if (val === 'М') return { background: 'rgba(250, 204, 21, 0.2)', color: '#fde047' }
-    if (val === '—') return { background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8' }
-    return { background: 'rgba(74, 222, 128, 0.14)', color: '#86efac' }
-  }
+export function ChemReferenceDrawer({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<Tab>('solubility')
 
   return (
-    <>
-      <button
-        type="button"
-        className="pause"
-        style={{ right: '130px', zIndex: 45, pointerEvents: 'auto' }}
-        onClick={() => setOpen(true)}
-      >
-        📊 Таблица растворимости
-      </button>
-
-      {open && (
-        <div className="modal" style={{ zIndex: 110 }} onClick={() => setOpen(false)}>
-          <div
-            className="sheet"
-            style={{ maxWidth: '860px', width: '95%' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div>
-                <p className="eyebrow" style={{ margin: 0 }}>Справочник • ЦТ / ЦЭ / 8–11 класс</p>
-                <h2 style={{ fontSize: '22px', margin: '4px 0 0' }}>Таблица растворимости и ряд активности</h2>
-              </div>
-              <button type="button" className="ghost" style={{ padding: '6px 14px' }} onClick={() => setOpen(false)}>
-                ✕
-              </button>
+    <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/75 backdrop-blur-sm sm:items-stretch">
+      <div className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-slate-800 bg-slate-900 shadow-2xl sm:h-full sm:max-h-none sm:max-w-xl sm:rounded-none sm:border-l">
+        {/* Шапка справочника */}
+        <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-400">
+              <BookOpen className="h-4 w-4" />
             </div>
-
-            <div className="sheet-copy">
-              {/* Ряд активности металлов */}
-              <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--line)' }}>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', fontWeight: 600 }}>
-                  ЭЛЕКТРОХИМИЧЕСКИЙ РЯД НАПРЯЖЕНИЙ МЕТАЛЛОВ (убывание активности →)
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {METALS.map((m) => (
-                    <span
-                      key={m}
-                      style={{
-                        padding: '4px 8px',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        background: m === '(H₂)' ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
-                        color: m === '(H₂)' ? 'var(--ink)' : 'var(--text)',
-                      }}
-                    >
-                      {m}
-                    </span>
-                  ))}
-                </div>
+            <div>
+              <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-sky-400">
+                Справочник химика • ЦТ / ЦЭ
               </div>
+              <h2 className="text-base font-extrabold text-white sm:text-lg">
+                Таблицы и качественные признаки
+              </h2>
+            </div>
+          </div>
 
-              {/* Таблица растворимости */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть справочник"
+            className="rounded-xl border border-slate-800 bg-slate-800/60 p-2 text-slate-400 transition hover:text-white"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Вкладки */}
+        <div className="grid grid-cols-3 gap-1 border-b border-slate-800 bg-slate-950/50 p-2">
+          {[
+            { id: 'solubility', label: 'Растворимость', icon: Grid },
+            { id: 'indicators', label: 'Индикаторы', icon: Sparkles },
+            { id: 'gases', label: 'Осадки и газы', icon: FlaskConical },
+          ].map((item) => {
+            const Icon = item.icon
+            const active = tab === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id as Tab)}
+                className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
+                  active
+                    ? 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-400/40'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Контент вкладок */}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+          {tab === 'solubility' && (
+            <div>
+              <p className="mb-3 text-xs text-slate-400">
+                <strong className="text-emerald-400">Р</strong> — растворимо,{' '}
+                <strong className="text-amber-400">М</strong> — малорастворимо,{' '}
+                <strong className="text-rose-400">Н / Н↓</strong> — осадок,{' '}
+                <strong className="text-sky-400">↑</strong> — выделяется газ.
+              </p>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-800">
+                <table className="w-full border-collapse text-center font-mono text-xs">
                   <thead>
-                    <tr>
-                      <th style={{ padding: '8px', border: '1px solid var(--line)', background: 'rgba(255,255,255,0.08)' }}>
-                        Ионы
+                    <tr className="border-b border-slate-800 bg-slate-950 text-slate-300">
+                      <th className="sticky left-0 z-10 bg-slate-950 px-2.5 py-2 text-left font-bold text-sky-400">
+                        Ион
                       </th>
                       {CATIONS.map((c) => (
-                        <th key={c} style={{ padding: '8px', border: '1px solid var(--line)', color: 'var(--accent)' }}>
+                        <th key={c} className="px-2 py-2 font-bold">
                           {c}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
-                    {ANIONS.map((anion) => (
-                      <tr key={anion}>
-                        <td style={{ padding: '8px', border: '1px solid var(--line)', fontWeight: 700, color: '#38bdf8' }}>
-                          {anion}
+                  <tbody className="divide-y divide-slate-800/70">
+                    {ANIONS.map((row) => (
+                      <tr key={row.ion} className="bg-slate-900/60">
+                        <td className="sticky left-0 z-10 border-r border-slate-800 bg-slate-900 px-2.5 py-2 text-left font-bold text-slate-200">
+                          {row.ion}
                         </td>
-                        {TABLE[anion].map((cell, idx) => (
-                          <td
-                            key={idx}
-                            style={{
-                              padding: '7px',
-                              border: '1px solid var(--line)',
-                              ...getCellStyle(cell),
-                            }}
-                          >
-                            {cell}
-                          </td>
-                        ))}
+                        {CATIONS.map((c) => {
+                          const val = row.vals[c] ?? '—'
+                          const color = val.startsWith('Н')
+                            ? 'bg-rose-500/15 font-bold text-rose-300'
+                            : val.startsWith('↑')
+                            ? 'bg-sky-500/15 font-bold text-sky-300'
+                            : val === 'М'
+                            ? 'text-amber-300'
+                            : val === 'Р'
+                            ? 'text-emerald-400/90'
+                            : 'text-slate-600'
+
+                          return (
+                            <td key={c} className={`px-2 py-2 ${color}`}>
+                              {val}
+                            </td>
+                          )
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '12px', fontSize: '13px', color: 'var(--muted)' }}>
-                <span><strong style={{ color: '#86efac' }}>Р</strong> — растворимо</span>
-                <span><strong style={{ color: '#fde047' }}>М</strong> — малорастворимо</span>
-                <span><strong style={{ color: '#fca5a5' }}>Н</strong> — нерастворимо (осадок ↓)</span>
-                <span><strong style={{ color: '#94a3b8' }}>—</strong> — разлагается водой или не существует</span>
-              </div>
             </div>
-          </div>
+          )}
+
+          {tab === 'indicators' && (
+            <div className="flex flex-col gap-3">
+              {[
+                {
+                  name: 'Фенолфталеин',
+                  acid: 'Бесцветный',
+                  neutral: 'Бесцветный',
+                  alkali: 'Малиновый',
+                  alkaliCls: 'text-pink-400 font-bold',
+                },
+                {
+                  name: 'Метилоранж',
+                  acid: 'Красный',
+                  neutral: 'Оранжевый',
+                  alkali: 'Жёлтый',
+                  alkaliCls: 'text-amber-300 font-bold',
+                },
+                {
+                  name: 'Лакмус',
+                  acid: 'Красный',
+                  neutral: 'Фиолетовый',
+                  alkali: 'Синий',
+                  alkaliCls: 'text-sky-400 font-bold',
+                },
+              ].map((ind) => (
+                <div
+                  key={ind.name}
+                  className="rounded-2xl border border-slate-800 bg-slate-800/40 p-4"
+                >
+                  <div className="mb-2.5 text-sm font-extrabold text-white">{ind.name}</div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-xl bg-slate-950/60 p-2.5">
+                      <div className="mb-1 text-[10px] text-slate-500">Кислая (H⁺)</div>
+                      <div className="font-bold text-rose-400">{ind.acid}</div>
+                    </div>
+                    <div className="rounded-xl bg-slate-950/60 p-2.5">
+                      <div className="mb-1 text-[10px] text-slate-500">Нейтральная</div>
+                      <div className="font-semibold text-slate-300">{ind.neutral}</div>
+                    </div>
+                    <div className="rounded-xl bg-slate-950/60 p-2.5">
+                      <div className="mb-1 text-[10px] text-slate-500">Щелочная (OH⁻)</div>
+                      <div className={ind.alkaliCls}>{ind.alkali}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === 'gases' && (
+            <div className="flex flex-col gap-2.5 text-xs sm:text-sm">
+              {[
+                { ion: 'Cl⁻ + Ag⁺', res: 'AgCl↓ — белый творожистый осадок (не раств. в HNO₃)' },
+                { ion: 'SO₄²⁻ + Ba²⁺', res: 'BaSO₄↓ — белый плотный осадок (не раств. в кислотах)' },
+                { ion: 'CO₃²⁻ + 2H⁺', res: 'CO₂↑ + H₂O — «вскипание», выделение газа без запаха' },
+                { ion: 'Cu²⁺ + 2OH⁻', res: 'Cu(OH)₂↓ — ярко-голубой студенистый осадок' },
+                { ion: 'Fe³⁺ + 3OH⁻', res: 'Fe(OH)₃↓ — бурый осадок («ржавчина»)' },
+                { ion: 'NH₄⁺ + OH⁻', res: 'NH₃↑ + H₂O — резкий запах нашатырного спирта' },
+              ].map((item) => (
+                <div
+                  key={item.ion}
+                  className="rounded-2xl border border-slate-800 bg-slate-800/40 p-3.5"
+                >
+                  <div className="mb-1 font-mono text-xs font-bold text-sky-400">{item.ion}</div>
+                  <div className="text-slate-200">{item.res}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </>
+      </div>
+    </div>
   )
 }

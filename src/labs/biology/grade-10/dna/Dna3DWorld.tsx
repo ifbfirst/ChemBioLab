@@ -2,11 +2,13 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   CanvasTexture,
+  CatmullRomCurve3,
   DoubleSide,
   Object3D,
   Sprite,
   SpriteMaterial,
   SRGBColorSpace,
+  TubeGeometry,
   Vector3,
   type Group,
   type InstancedMesh,
@@ -16,16 +18,16 @@ import type { Vec3 } from '../../../../platform/types'
 import { useLab } from '../../../../game/state'
 
 const PAIRS = [
-  { left: '#38bdf8', right: '#facc15', mrna: '#facc15' },
-  { left: '#4ade80', right: '#fb923c', mrna: '#fb923c' },
+  { left: '#38bdf8', right: '#facc15', mrna: '#fb7185' },
+  { left: '#4ade80', right: '#fb923c', mrna: '#f472b6' },
   { left: '#facc15', right: '#38bdf8', mrna: '#38bdf8' },
   { left: '#fb923c', right: '#4ade80', mrna: '#4ade80' },
-  { left: '#38bdf8', right: '#facc15', mrna: '#facc15' },
-  { left: '#4ade80', right: '#fb923c', mrna: '#fb923c' },
+  { left: '#38bdf8', right: '#facc15', mrna: '#fb7185' },
+  { left: '#4ade80', right: '#fb923c', mrna: '#f472b6' },
   { left: '#facc15', right: '#38bdf8', mrna: '#38bdf8' },
   { left: '#fb923c', right: '#4ade80', mrna: '#4ade80' },
-  { left: '#38bdf8', right: '#facc15', mrna: '#facc15' },
-  { left: '#4ade80', right: '#fb923c', mrna: '#fb923c' },
+  { left: '#38bdf8', right: '#facc15', mrna: '#fb7185' },
+  { left: '#4ade80', right: '#fb923c', mrna: '#f472b6' },
 ]
 
 function Tag({ text, position, color }: { text: string; position: Vec3; color: string }) {
@@ -38,7 +40,15 @@ function Tag({ text, position, color }: { text: string; position: Vec3; color: s
     texture.colorSpace = SRGBColorSpace
     if (ctx) {
       ctx.clearRect(0, 0, 768, 140)
-      ctx.font = '700 44px "Segoe UI", sans-serif'
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'
+      ctx.beginPath()
+      ctx.roundRect(64, 24, 640, 92, 46)
+      ctx.fill()
+      ctx.strokeStyle = color
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      ctx.font = '700 38px "Segoe UI", system-ui, sans-serif'
       ctx.fillStyle = color
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -47,30 +57,30 @@ function Tag({ text, position, color }: { text: string; position: Vec3; color: s
     }
     const material = new SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
     const next = new Sprite(material)
-    next.scale.set(3.2, 0.58, 1)
+    next.scale.set(3.0, 0.55, 1)
     return next
   }, [text, color])
 
   return <primitive object={sprite} position={position} />
 }
 
-/** Яркие розовые нуклеотиды РНК, летящие к месту сборки */
 function NucleotideFlow({ active }: { active: boolean }) {
   const ref = useRef<InstancedMesh>(null)
   const dummy = useMemo(() => new Object3D(), [])
-  const start = useMemo(() => new Vector3(3.2, 4.2, 0.6), [])
-  const end = useMemo(() => new Vector3(-1.3, 1.85, 0.6), [])
+  const start = useMemo(() => new Vector3(2.4, 3.8, 0.8), [])
+  const end = useMemo(() => new Vector3(-1.1, 1.85, 0.75), [])
 
   useFrame(({ clock }) => {
     const mesh = ref.current
     if (!mesh) return
     mesh.visible = active
     if (!active) return
-    const time = clock.elapsedTime * 0.55
-    for (let i = 0; i < 3; i++) {
-      const t = (time + i / 3) % 1
+    const time = clock.elapsedTime * 0.65
+    for (let i = 0; i < 4; i++) {
+      const t = (time + i / 4) % 1
       dummy.position.lerpVectors(start, end, t)
-      dummy.scale.setScalar(0.16)
+      dummy.position.y += Math.sin(t * Math.PI) * 0.35
+      dummy.scale.setScalar(0.13 * (1 - t * 0.25))
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)
     }
@@ -78,8 +88,8 @@ function NucleotideFlow({ active }: { active: boolean }) {
   })
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, 3]} frustumCulled={false}>
-      <sphereGeometry args={[1, 10, 10]} />
+    <instancedMesh ref={ref} args={[undefined, undefined, 4]} frustumCulled={false}>
+      <sphereGeometry args={[1, 12, 12]} />
       <meshBasicMaterial color="#fb7185" transparent opacity={0.95} toneMapped={false} />
     </instancedMesh>
   )
@@ -93,11 +103,12 @@ function PulseMarker({
   onSelect: () => void
 }) {
   const ring = useRef<Mesh>(null)
+  const [hovered, setHovered] = useState(false)
 
   useFrame(({ camera, clock }) => {
     if (!ring.current) return
     ring.current.lookAt(camera.position)
-    const s = 1 + Math.sin(clock.elapsedTime * 3) * 0.12
+    const s = (hovered ? 1.25 : 1) + Math.sin(clock.elapsedTime * 3.5) * 0.12
     ring.current.scale.set(s, s, s)
   })
 
@@ -108,58 +119,83 @@ function PulseMarker({
           e.stopPropagation()
           onSelect()
         }}
-        onPointerOver={() => {
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHovered(true)
           document.body.style.cursor = 'pointer'
         }}
         onPointerOut={() => {
+          setHovered(false)
           document.body.style.cursor = 'grab'
         }}
       >
-        <sphereGeometry args={[0.22, 18, 18]} />
-        <meshStandardMaterial color="#e7ff9a" emissive="#dff56a" emissiveIntensity={1.3} />
+        <sphereGeometry args={[0.22, 20, 20]} />
+        <meshStandardMaterial
+          color="#e7ff9a"
+          emissive="#bef264"
+          emissiveIntensity={hovered ? 1.8 : 1.25}
+        />
       </mesh>
-      <mesh ref={ring}>
-        <ringGeometry args={[0.3, 0.38, 24]} />
-        <meshBasicMaterial color="#f3ff8a" transparent opacity={0.85} side={DoubleSide} />
+      <mesh ref={ring} raycast={() => null}>
+        <ringGeometry args={[0.3, 0.38, 28]} />
+        <meshBasicMaterial color="#ecfccb" transparent opacity={0.9} side={DoubleSide} />
       </mesh>
-      <pointLight intensity={3} distance={2.5} color="#f3ff8a" />
     </group>
   )
 }
-
-export function Dna3DWorld({ markerIds }: { markerIds: readonly string[] }) {
-  const { state, api } = useLab()
+export function Dna3DWorld({ markerIds: _markerIds }: { markerIds: readonly string[] }) {
+  const { state, facts, api } = useLab()
   const helixRef = useRef<Group>(null)
   const mrnaRef = useRef<Group>(null)
+  const polyRef = useRef<Mesh>(null)
   const [builtCount, setBuiltCount] = useState(0)
   const [reclosed, setReclosed] = useState(false)
   const timerRef = useRef(0)
 
   const synth = state.synthesis
+  const factKeys = Object.keys(facts)
+
+  const { leftStrandGeo, rightStrandGeo } = useMemo(() => {
+    const leftPts: Vector3[] = []
+    const rightPts: Vector3[] = []
+    PAIRS.forEach((_, i) => {
+      const y = (i - PAIRS.length / 2) * 0.62
+      const angle = i * 0.52
+      leftPts.push(new Vector3(Math.cos(angle) * -1.35, y, Math.sin(angle) * 1.35))
+      rightPts.push(new Vector3(Math.cos(angle) * 1.35, y, Math.sin(angle) * -1.35))
+    })
+    return {
+      leftStrandGeo: new TubeGeometry(new CatmullRomCurve3(leftPts), 64, 0.085, 12, false),
+      rightStrandGeo: new TubeGeometry(new CatmullRomCurve3(rightPts), 64, 0.085, 12, false),
+    }
+  }, [])
 
   useFrame(({ clock }, delta) => {
     if (helixRef.current) {
       if (!synth) {
-        helixRef.current.rotation.y += delta * 0.3
+        helixRef.current.rotation.y += delta * 0.28
       } else {
-        helixRef.current.rotation.y += (0 - helixRef.current.rotation.y) * Math.min(1, delta * 3)
+        helixRef.current.rotation.y += (0 - helixRef.current.rotation.y) * Math.min(1, delta * 3.5)
       }
     }
 
     if (synth) {
       timerRef.current += delta
-      // Каждые 0.55 сек добавляется 1 звено иРНК (всего 6 звеньев за 3.3 сек)
-      const count = Math.min(6, Math.floor(timerRef.current / 0.55) + 1)
+      const count = Math.min(6, Math.floor(timerRef.current / 0.5) + 1)
       if (count !== builtCount) setBuiltCount(count)
 
-      // После 3.6 сек спираль ДНК смыкается обратно!
-      if (timerRef.current > 3.6 && !reclosed) setReclosed(true)
+      if (timerRef.current > 3.4 && !reclosed) setReclosed(true)
+
+      if (polyRef.current) {
+        const progress = Math.min(1, timerRef.current / 3.2)
+        polyRef.current.position.y = 3.1 - progress * 3.2
+        polyRef.current.visible = !reclosed
+      }
 
       if (mrnaRef.current) {
-        // Готовая розовая цепь иРНК уезжает вправо на x = +2.35 и остаётся там
-        const slideOut = Math.min(3.5, Math.max(0, (timerRef.current - 3.3) * 1.5))
-        const gentleFloat = timerRef.current > 5.6 ? Math.sin(clock.elapsedTime * 1.8) * 0.08 : 0
-        mrnaRef.current.position.x = -1.15 + slideOut + gentleFloat
+        const slideOut = Math.min(2.4, Math.max(0, (timerRef.current - 3.2) * 1.3))
+        const gentleFloat = timerRef.current > 5.2 ? Math.sin(clock.elapsedTime * 1.8) * 0.08 : 0
+        mrnaRef.current.position.x = -1.05 + slideOut + gentleFloat
       }
     } else {
       timerRef.current = 0
@@ -177,96 +213,127 @@ export function Dna3DWorld({ markerIds }: { markerIds: readonly string[] }) {
     }))
   }, [])
 
+  const f0 = factKeys.at(0)
+  const f1 = factKeys.at(1)
+  const f2 = factKeys.at(2)
+
   return (
-    <group>
-      <color attach="background" args={['#0c1e26']} />
-      <ambientLight intensity={1.15} />
-      <directionalLight position={[4, 7, 5]} intensity={1.5} />
+    <group position-x={-0.35} position-y={0.68} scale={0.62}>
+      <color attach="background" args={['#070b14']} />
+      <fog attach="fog" args={['#070b14', 10, 22]} />
+      <ambientLight intensity={0.95} />
+      <directionalLight position-x={4} position-y={7} position-z={6} intensity={1.6} color="#ffffff" />
+      <pointLight position-x={-4} position-y={2} position-z={4} intensity={1.1} color="#38bdf8" />
+      <pointLight position-x={3} position-y={1} position-z={3} intensity={0.9} color="#34d399" />
 
       {/* Двойная спираль ДНК */}
-      <group ref={helixRef} position={[-1.3, 1.85, 0]}>
+      <group ref={helixRef} position-x={-1.25} position-y={1.85} position-z={0}>
+        {(!synth || reclosed) && (
+          <>
+            <mesh geometry={leftStrandGeo} raycast={() => null}>
+              <meshPhysicalMaterial color="#64748b" metalness={0.25} roughness={0.25} />
+            </mesh>
+            <mesh geometry={rightStrandGeo} raycast={() => null}>
+              <meshPhysicalMaterial color="#64748b" metalness={0.25} roughness={0.25} />
+            </mesh>
+          </>
+        )}
+
         {rungs.map((r, idx) => {
-          const split = synth && !reclosed && r.isMiddle ? 1.4 : 0
-          const rowAngle = synth ? r.angle * 0.2 : r.angle
+          const split = synth && !reclosed && r.isMiddle ? 1.25 : 0
+          const rowAngle = synth && !reclosed ? r.angle * 0.15 : r.angle
+
 
           return (
-            <group key={idx} position={[0, r.y, 0]} rotation={[0, rowAngle, 0]}>
-              <mesh position={[-1.35 - split, 0, 0]}>
-                <sphereGeometry args={[0.22, 16, 16]} />
-                <meshStandardMaterial color="#94a3b8" roughness={0.3} />
+            <group key={idx} position-x={0} position-y={r.y} position-z={0} rotation-y={rowAngle}>
+              <mesh position-x={-1.35 - split}>
+                <sphereGeometry args={[0.2, 18, 18]} />
+                <meshPhysicalMaterial color="#94a3b8" metalness={0.3} roughness={0.25} />
               </mesh>
-              <mesh position={[1.35 + split, 0, 0]}>
-                <sphereGeometry args={[0.22, 16, 16]} />
-                <meshStandardMaterial color="#94a3b8" roughness={0.3} />
-              </mesh>
-
-              <mesh position={[-0.68 - split, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.09, 0.09, 1.15, 12]} />
-                <meshStandardMaterial color={r.left} emissive={r.left} emissiveIntensity={0.45} />
+              <mesh position-x={1.35 + split}>
+                <sphereGeometry args={[0.2, 18, 18]} />
+                <meshPhysicalMaterial color="#94a3b8" metalness={0.3} roughness={0.25} />
               </mesh>
 
-              <mesh position={[0.68 + split, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.09, 0.09, 1.15, 12]} />
-                <meshStandardMaterial color={r.right} emissive={r.right} emissiveIntensity={0.45} />
+              <mesh position-x={-0.68 - split} rotation-z={Math.PI / 2}>
+                <capsuleGeometry args={[0.085, 0.96, 8, 14]} />
+                <meshStandardMaterial color={r.left} emissive={r.left} emissiveIntensity={0.4} roughness={0.3} />
+              </mesh>
+
+              <mesh position-x={0.68 + split} rotation-z={Math.PI / 2}>
+                <capsuleGeometry args={[0.085, 0.96, 8, 14]} />
+                <meshStandardMaterial color={r.right} emissive={r.right} emissiveIntensity={0.4} roughness={0.3} />
               </mesh>
             </group>
           )
         })}
+
+        {/* 3 постоянных маркера по списку фактов ДНК (исчезают только после изучения) */}
+        {!synth && f0 && !state.studied.includes(f0) && (
+          <PulseMarker position={[-1.35, 1.86, 0.25]} onSelect={() => api.inspect(f0, f0)} />
+        )}
+        {!synth && f1 && !state.studied.includes(f1) && (
+          <PulseMarker position={[0.35, 0.0, 0.25]} onSelect={() => api.inspect(f1, f1)} />
+        )}
+        {!synth && f2 && !state.studied.includes(f2) && (
+          <PulseMarker position={[1.35, -1.86, 0.25]} onSelect={() => api.inspect(f2, f2)} />
+        )}
       </group>
 
-      {/* Пошаговая сборка КОНТРАСТНОЙ РОЗОВОЙ НИТИ иРНК */}
+      {/* Визуализация транскрипции (синтез иРНК) */}
       {synth && (
         <>
           <Tag
-            text={reclosed ? '1. ДНК восстановила связи' : '1. Разрыв связей ДНК'}
-            position={[-1.3, 4.95, 0.2]}
-            color="#cbd5e1"
+            text={reclosed ? 'ДНК восстановила спираль' : '1. РНК-полимераза расплетает ДНК'}
+            position={[-1.25, 4.95, 0.2]}
+            color="#e2e8f0"
           />
+
+          <mesh ref={polyRef} position-x={-1.25} position-y={2.5} position-z={0.3} rotation-x={Math.PI / 2}>
+            <torusGeometry args={[1.65, 0.11, 16, 48]} />
+            <meshStandardMaterial
+              color="#38bdf8"
+              emissive="#0284c7"
+              emissiveIntensity={1.1}
+              transparent
+              opacity={0.75}
+            />
+          </mesh>
 
           <NucleotideFlow active={!reclosed} />
           {!reclosed && (
-            <Tag text="2. Нуклеотиды РНК" position={[2.5, 4.35, 0.5]} color="#fb7185" />
+            <Tag text="2. Комплементарная сборка иРНК" position={[1.95, 4.25, 0.5]} color="#fb7185" />
+          )}
+          {reclosed && (
+            <Tag text="Готовая одноцепочечная иРНК" position={[1.35, 4.25, 0.65]} color="#fda4af" />
           )}
 
-          {/* Новая одноцепочечная нить иРНК с ярко-розовым остовом */}
-          <group ref={mrnaRef} position={[-1.15, 1.85, 0.65]}>
-            {/* Вертикальная связующая нить остова иРНК, растущая сверху вниз */}
+          {/* Одноцепочечная нить иРНК */}
+          <group ref={mrnaRef} position-x={-1.05} position-y={1.85} position-z={0.75}>
             {builtCount > 1 && (
-              <mesh position={[0, (2.5 - (builtCount - 1) / 2) * 0.62, 0]}>
-                <cylinderGeometry args={[0.08, 0.08, (builtCount - 1) * 0.62, 12]} />
-                <meshStandardMaterial color="#f43f5e" emissive="#e11d48" emissiveIntensity={0.9} />
+              <mesh position-x={0} position-y={(2.5 - (builtCount - 1) / 2) * 0.62} position-z={0}>
+                <cylinderGeometry args={[0.075, 0.075, (builtCount - 1) * 0.62, 14]} />
+                <meshStandardMaterial color="#f43f5e" emissive="#e11d48" emissiveIntensity={0.85} />
               </mesh>
             )}
 
-            {rungs.slice(2, 2 + builtCount).map((r, i) => (
-              <group key={i} position={[0, (2.5 - i) * 0.62, 0]}>
-                {/* Ярко-розовый узел остова иРНК */}
-                <mesh>
-                  <sphereGeometry args={[0.25, 16, 16]} />
-                  <meshStandardMaterial color="#f43f5e" emissive="#fb7185" emissiveIntensity={1.1} />
-                </mesh>
-                {/* Нуклеотид иРНК */}
-                <mesh position={[-0.65, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-                  <cylinderGeometry args={[0.1, 0.1, 1.15, 12]} />
-                  <meshStandardMaterial color={r.mrna} emissive={r.mrna} emissiveIntensity={0.85} />
-                </mesh>
-              </group>
-            ))}
+            {rungs.slice(2, 2 + builtCount).map((r, i) => {
+              const yPos = (2.5 - i) * 0.62
+              return (
+                <group key={i} position-x={0} position-y={yPos} position-z={0}>
+                  <mesh>
+                    <sphereGeometry args={[0.17, 16, 16]} />
+                    <meshPhysicalMaterial color="#fb7185" emissive="#e11d48" emissiveIntensity={0.6} roughness={0.2} />
+                  </mesh>
+                  <mesh position-x={-0.48} rotation-z={Math.PI / 2}>
+                    <capsuleGeometry args={[0.075, 0.68, 8, 12]} />
+                    <meshStandardMaterial color={r.mrna} emissive={r.mrna} emissiveIntensity={0.55} />
+                  </mesh>
+                </group>
+              )
+            })}
           </group>
-
-          <Tag text="3. Готовая цепь иРНК" position={[2.35, 4.2, 0.5]} color="#fb7185" />
         </>
-      )}
-
-      {/* Интерактивные маркеры */}
-      {markerIds.includes('backbone') && (
-        <PulseMarker position={[-2.65, 3.2, 0.5]} onSelect={() => api.inspect('backbone', 'backbone')} />
-      )}
-      {markerIds.includes('bases') && (
-        <PulseMarker position={[-1.3, 1.85, 1.1]} onSelect={() => api.inspect('bases', 'bases')} />
-      )}
-      {markerIds.includes('transcription') && (
-        <PulseMarker position={[0.15, 0.55, 0.5]} onSelect={() => api.inspect('transcription', 'transcription')} />
       )}
     </group>
   )

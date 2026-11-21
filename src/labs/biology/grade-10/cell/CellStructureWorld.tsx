@@ -1,301 +1,354 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { CheckCircle2, Microscope } from 'lucide-react'
+import * as THREE from 'three'
 import { useLab } from '../../../../game/state'
 
 type CellType = 'plant' | 'animal' | 'bacteria'
 
-export function CellStructureWorld() {
-  const { state, api } = useLab()
-  const [cellType, setCellType] = useState<CellType>('plant')
-  const [hovered, setHovered] = useState<string | null>(null)
+interface Organelle3D {
+  id: string
+  label: string
+  presentIn: CellType[]
+  color: string
+}
 
-  const isDone = (id: string) => state.studied.includes(id)
+const CELL_TABS: { id: CellType; label: string; short: string }[] = [
+  { id: 'plant', label: 'Растительная', short: 'Растение' },
+  { id: 'animal', label: 'Животная', short: 'Животное' },
+  { id: 'bacteria', label: 'Бактерия', short: 'Бактерия' },
+]
 
-  const LABELS: Record<string, string> = {
-    'cell-wall': 'Клеточная стенка (целлюлоза / муреин)',
-    nucleus: 'Ядро с ядрышком и хроматином',
-    vacuole: 'Крупная центральная вакуоль с клеточным соком',
-    chloroplast: 'Хлоропласт (фотосинтез)',
-    mitochondria: 'Митохондрия с кристами (синтез АТФ)',
-    ribosome: 'Рибосомы (синтез белка)',
+const ORGANELLES_3D: Organelle3D[] = [
+  { id: 'nucleus', label: 'Ядро', presentIn: ['plant', 'animal'], color: '#a855f7' },
+  { id: 'chloroplast', label: 'Хлоропласт', presentIn: ['plant'], color: '#22c55e' },
+  { id: 'vacuole', label: 'Вакуоль', presentIn: ['plant'], color: '#38bdf8' },
+  { id: 'mitochondria', label: 'Митохондрия', presentIn: ['plant', 'animal'], color: '#f97316' },
+  { id: 'ribosome', label: 'Рибосомы', presentIn: ['plant', 'animal', 'bacteria'], color: '#eab308' },
+  { id: 'wall', label: 'Клет. стенка', presentIn: ['plant', 'bacteria'], color: '#10b981' },
+]
+
+export function Cell3DScene({ cellType }: { cellType: CellType }) {
+  const { facts, api } = useLab()
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
+  const rootRef = useRef<THREE.Group>(null)
+
+  const flagellumGeo = useMemo(() => {
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(1.22, 0, 0),
+      new THREE.Vector3(1.52, 0.16, 0.06),
+      new THREE.Vector3(1.85, -0.14, -0.05),
+      new THREE.Vector3(2.18, 0.12, 0.04),
+      new THREE.Vector3(2.48, -0.04, 0),
+    ])
+    return new THREE.TubeGeometry(curve, 32, 0.028, 8, false)
+  }, [])
+
+  const factKeys = Object.keys(facts)
+  const resolveFactId = (shortKey: string, fallbackIndex: number) =>
+    factKeys.find((k) => k.toLowerCase().includes(shortKey)) ?? factKeys[fallbackIndex] ?? shortKey
+
+  const onSelect = (shortKey: string) => {
+    const idx = ORGANELLES_3D.findIndex((o) => o.id === shortKey)
+    const targetId = resolveFactId(shortKey, idx >= 0 ? idx : 0)
+    api.inspect(targetId, targetId)
   }
 
+  useFrame((_, delta) => {
+    if (rootRef.current) {
+      rootRef.current.rotation.y += delta * 0.14
+    }
+  })
+
+  return (
+    <group ref={rootRef} position-x={-0.35} position-y={1.85} scale={0.7}>
+      <ambientLight intensity={0.9} />
+      <directionalLight position-x={4} position-y={6} position-z={5} intensity={1.4} color="#ffffff" />
+      <pointLight position-x={-4} position-y={-3} position-z={4} intensity={0.85} color="#38bdf8" />
+
+      {/* 1. ОБОЛОЧКА / КЛЕТОЧНАЯ СТЕНКА */}
+      {cellType === 'plant' && (
+        <group>
+          <mesh
+            scale={[1.18, 0.85, 1.05]}
+            onClick={(e) => {
+              if (e.intersections.some((hit) => hit.object.userData?.isOrganelle)) return
+              e.stopPropagation()
+              onSelect('wall')
+            }}
+            onPointerOver={(e) => {
+              if (e.intersections.some((hit) => hit.object.userData?.isOrganelle)) return
+              setHoveredId('wall')
+            }}
+            onPointerOut={() => setHoveredId(null)}
+          >
+            <dodecahedronGeometry args={[1.58, 1]} />
+            <meshPhysicalMaterial
+              color={hoveredId === 'wall' ? '#34d399' : '#10b981'}
+              transparent
+              opacity={hoveredId === 'wall' ? 0.26 : 0.18}
+              roughness={0.25}
+              depthWrite={false}
+            />
+          </mesh>
+
+          <mesh raycast={() => null} scale={[1.12, 0.8, 1.0]}>
+            <dodecahedronGeometry args={[1.52, 1]} />
+            <meshPhysicalMaterial
+              color="#34d399"
+              transparent
+              opacity={0.12}
+              roughness={0.3}
+              depthWrite={false}
+            />
+          </mesh>
+        </group>
+      )}
+
+      {cellType === 'animal' && (
+        <mesh raycast={() => null} scale={[1.1, 0.92, 1.05]}>
+          <sphereGeometry args={[1.55, 36, 36]} />
+          <meshPhysicalMaterial
+            color="#38bdf8"
+            transparent
+            opacity={0.16}
+            roughness={0.2}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {cellType === 'bacteria' && (
+        <group>
+          <mesh
+            rotation={[0, 0, Math.PI / 2]}
+            onClick={(e) => {
+              if (e.intersections.some((hit) => hit.object.userData?.isOrganelle)) return
+              e.stopPropagation()
+              onSelect('wall')
+            }}
+            onPointerOver={(e) => {
+              if (e.intersections.some((hit) => hit.object.userData?.isOrganelle)) return
+              setHoveredId('wall')
+            }}
+            onPointerOut={() => setHoveredId(null)}
+          >
+            <capsuleGeometry args={[0.74, 1.48, 20, 32]} />
+            <meshPhysicalMaterial
+              color={hoveredId === 'wall' ? '#34d399' : '#10b981'}
+              transparent
+              opacity={hoveredId === 'wall' ? 0.3 : 0.22}
+              roughness={0.25}
+              depthWrite={false}
+            />
+          </mesh>
+
+          <mesh geometry={flagellumGeo} raycast={() => null}>
+            <meshStandardMaterial color="#34d399" emissive="#059669" emissiveIntensity={0.45} />
+          </mesh>
+
+          <mesh position={[-0.15, 0, 0]} rotation={[0.5, 0.3, 0]} raycast={() => null}>
+            <torusKnotGeometry args={[0.3, 0.042, 64, 12, 2, 3]} />
+            <meshStandardMaterial color="#fb7185" emissive="#e11d48" emissiveIntensity={0.45} />
+          </mesh>
+        </group>
+      )}
+      {/* 2. ЯДРО С ЯДРЫШКОМ */}
+      {(cellType === 'plant' || cellType === 'animal') && (
+        <group
+          position={cellType === 'plant' ? [-0.82, 0.12, 0.12] : [0, 0.05, 0]}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect('nucleus')
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation()
+            setHoveredId('nucleus')
+          }}
+          onPointerOut={() => setHoveredId(null)}
+          scale={hoveredId === 'nucleus' ? 1.14 : 1}
+        >
+          <mesh userData={{ isOrganelle: true }}>
+            <sphereGeometry args={[0.42, 28, 28]} />
+            <meshPhysicalMaterial color="#a855f7" transparent opacity={0.72} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.1, 0.06, 0.08]} userData={{ isOrganelle: true }}>
+            <sphereGeometry args={[0.16, 20, 20]} />
+            <meshStandardMaterial color="#e9d5ff" emissive="#9333ea" emissiveIntensity={0.65} />
+          </mesh>
+        </group>
+      )}
+
+      {/* 3. ЦЕНТРАЛЬНАЯ ВАКУОЛЬ */}
+      {cellType === 'plant' && (
+        <mesh
+          position={[0.42, -0.05, -0.18]}
+          userData={{ isOrganelle: true }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onSelect('vacuole')
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation()
+            setHoveredId('vacuole')
+          }}
+          onPointerOut={() => setHoveredId(null)}
+          scale={hoveredId === 'vacuole' ? 1.08 : 1}
+        >
+          <sphereGeometry args={[0.64, 28, 28]} />
+          <meshPhysicalMaterial color="#38bdf8" transparent opacity={0.45} roughness={0.12} />
+        </mesh>
+      )}
+
+      {/* 4. ХЛОРОПЛАСТЫ */}
+      {cellType === 'plant' &&
+        [
+          { pos: [0.98, 0.52, 0.52] as [number, number, number], rot: [0.4, 0.2, -0.5] as [number, number, number] },
+          { pos: [-0.42, 0.58, -0.58] as [number, number, number], rot: [-0.3, 0.6, 0.4] as [number, number, number] },
+          { pos: [0.88, -0.48, 0.54] as [number, number, number], rot: [0.2, -0.4, 0.3] as [number, number, number] },
+        ].map((cp, idx) => (
+          <group
+            key={idx}
+            position={cp.pos}
+            rotation={cp.rot}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect('chloroplast')
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation()
+              setHoveredId('chloroplast')
+            }}
+            onPointerOut={() => setHoveredId(null)}
+            scale={hoveredId === 'chloroplast' ? 1.16 : 1}
+          >
+            <mesh scale={[1.65, 0.78, 0.98]} userData={{ isOrganelle: true }}>
+              <sphereGeometry args={[0.25, 20, 20]} />
+              <meshStandardMaterial color="#22c55e" emissive="#15803d" emissiveIntensity={0.45} />
+            </mesh>
+          </group>
+        ))}
+
+      {/* 5. МИТОХОНДРИИ */}
+      {(cellType === 'plant' || cellType === 'animal') &&
+        [
+          { pos: [-0.52, -0.54, 0.62] as [number, number, number], rot: [0.3, 0.5, 0.8] as [number, number, number] },
+          { pos: [0.72, 0.46, -0.62] as [number, number, number], rot: [-0.4, 0.2, -0.6] as [number, number, number] },
+        ].map((mt, idx) => (
+          <mesh
+            key={idx}
+            position={mt.pos}
+            rotation={mt.rot}
+            userData={{ isOrganelle: true }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect('mitochondria')
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation()
+              setHoveredId('mitochondria')
+            }}
+            onPointerOut={() => setHoveredId(null)}
+            scale={hoveredId === 'mitochondria' ? 1.18 : 1}
+          >
+            <capsuleGeometry args={[0.15, 0.34, 12, 20]} />
+            <meshStandardMaterial color="#f97316" emissive="#c2410c" emissiveIntensity={0.45} />
+          </mesh>
+        ))}
+
+      {/* 6. РИБОСОМЫ НА МЕМБРАНАХ ЭПС */}
+      <group
+        position={cellType === 'plant' ? [-0.82, 0.12, 0.12] : [0, 0.05, 0]}
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect('ribosome')
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHoveredId('ribosome')
+        }}
+        onPointerOut={() => setHoveredId(null)}
+        scale={hoveredId === 'ribosome' ? 1.14 : 1}
+      >
+        <mesh userData={{ isOrganelle: true }}>
+          <torusGeometry args={[0.58, 0.12, 8, 24, Math.PI * 1.4]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+
+        {cellType !== 'bacteria' && (
+          <mesh rotation={[0.35, 0.15, 0]}>
+            <torusGeometry args={[0.58, 0.024, 10, 36, Math.PI * 1.35]} />
+            <meshStandardMaterial color="#c084fc" transparent opacity={0.45} roughness={0.4} />
+          </mesh>
+        )}
+
+        {Array.from({ length: 14 }, (_, idx) => {
+          const angle = (idx / 14) * Math.PI * 1.35
+          const radius = cellType === 'bacteria' ? 0.44 : 0.58
+          const rx = Math.cos(angle) * radius
+          const ry = Math.sin(angle) * radius
+          const rz = (idx % 2 === 0 ? 1 : -1) * 0.06
+          return (
+            <mesh key={idx} position={[rx, ry, rz]} userData={{ isOrganelle: true }}>
+              <sphereGeometry args={[0.036, 10, 10]} />
+              <meshStandardMaterial
+                color={hoveredId === 'ribosome' ? '#fde047' : '#eab308'}
+                emissive="#ca8a04"
+                emissiveIntensity={0.65}
+              />
+            </mesh>
+          )
+        })}
+      </group>
+    </group>
+  )
+}
+
+export function CellControls({
+  cellType,
+  setCellType,
+}: {
+  cellType: CellType
+  setCellType: (t: CellType) => void
+}) {
   return (
     <div
-      style={{
-        width: '100%',
-        height: '100vh',
-        background: 'radial-gradient(circle at center, #132d24 0%, #07140e 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '18px',
-        padding: '24px',
-      }}
-    >
-      {/* Переключатель типа клетки */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          padding: '6px',
-          borderRadius: '16px',
-          border: '1px solid var(--line)',
-          background: 'var(--glass)',
-          marginTop: '36px',
-        }}
-      >
-        <button
-          type="button"
-          className={cellType === 'plant' ? 'primary' : 'ghost'}
-          style={{ padding: '8px 16px', fontSize: '14px' }}
-          onClick={() => setCellType('plant')}
-        >
-          🌱 Растительная
-        </button>
-        <button
-          type="button"
-          className={cellType === 'animal' ? 'primary' : 'ghost'}
-          style={{ padding: '8px 16px', fontSize: '14px' }}
-          onClick={() => setCellType('animal')}
-        >
-          🐾 Животная
-        </button>
-        <button
-          type="button"
-          className={cellType === 'bacteria' ? 'primary' : 'ghost'}
-          style={{ padding: '8px 16px', fontSize: '14px' }}
-          onClick={() => setCellType('bacteria')}
-        >
-          🦠 Бактериальная
-        </button>
+    data-bottom-dock
+    className="pointer-events-none fixed inset-x-0 bottom-3 z-10 mx-auto flex max-w-md justify-center px-3 sm:bottom-5"
+  >
+
+      <div className="pointer-events-auto flex w-full items-center justify-between gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/90 p-2 shadow-xl backdrop-blur-md">
+        <div className="hidden items-center gap-1.5 pl-2 text-xs font-bold text-slate-300 sm:flex">
+          <Microscope className="h-4 w-4 text-emerald-400" />
+          <span>Препарат:</span>
+        </div>
+
+        <div className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto">
+          {CELL_TABS.map((tab) => {
+            const active = cellType === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setCellType(tab.id)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-extrabold transition ${
+                  active
+                    ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/50'
+                    : 'text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
+                }`}
+              >
+                <span className="sm:hidden">{tab.short}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
-
-      {/* Подсказка при наведении на любой органоид */}
-      <div
-        style={{
-          height: '28px',
-          fontSize: '15px',
-          fontWeight: 600,
-          color: hovered ? 'var(--accent)' : 'var(--muted)',
-        }}
-      >
-        {hovered ? `🔍 ${LABELS[hovered]} — нажми, чтобы изучить` : 'Наведи курсор и нажми на любую часть клетки'}
-      </div>
-
-      {/* Векторная SVG-иллюстрация клетки */}
-      <svg
-        viewBox="0 0 520 340"
-        style={{
-          width: 'min(540px, 92vw)',
-          height: 'auto',
-          filter: 'drop-shadow(0 20px 45px rgba(0, 0, 0, 0.5))',
-        }}
-      >
-        {/* 1. ОБОЛОЧКА КЛЕТКИ */}
-        {cellType === 'plant' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('cell-wall')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('cell-wall', 'cell-wall')}
-          >
-            {/* Жёсткая целлюлозная стенка */}
-            <rect
-              x="40"
-              y="30"
-              width="440"
-              height="280"
-              rx="42"
-              fill="#173d2c"
-              stroke={hovered === 'cell-wall' || isDone('cell-wall') ? '#dff56a' : '#84cc16'}
-              strokeWidth="12"
-            />
-            {/* Внутренняя плазматическая мембрана */}
-            <rect x="52" y="42" width="416" height="256" rx="32" fill="none" stroke="#a7f3d0" strokeWidth="2" strokeDasharray="6 4" />
-          </g>
-        )}
-
-        {cellType === 'animal' && (
-          <ellipse
-            cx="260"
-            cy="170"
-            rx="195"
-            ry="140"
-            fill="#281b2e"
-            stroke="#f472b6"
-            strokeWidth="4"
-            strokeDasharray="8 4"
-          />
-        )}
-
-        {cellType === 'bacteria' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('cell-wall')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('cell-wall', 'cell-wall')}
-          >
-            {/* Капсула и муреиновая стенка бактерии */}
-            <rect
-              x="50"
-              y="85"
-              width="420"
-              height="170"
-              rx="85"
-              fill="#132e3d"
-              stroke={hovered === 'cell-wall' || isDone('cell-wall') ? '#dff56a' : '#38bdf8'}
-              strokeWidth="10"
-            />
-            {/* Жгутик бактерии */}
-            <path d="M 470 170 Q 495 145, 515 170" fill="none" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
-          </g>
-        )}
-
-        {/* 2. ЦЕНТРАЛЬНАЯ ВАКУОЛЬ (только у растений) */}
-        {cellType === 'plant' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('vacuole')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('vacuole', 'vacuole')}
-          >
-            <path
-              d="M 240 90 C 310 75, 420 95, 425 175 C 430 245, 330 265, 245 250 C 210 242, 205 105, 240 90 Z"
-              fill="rgba(56, 189, 248, 0.28)"
-              stroke={hovered === 'vacuole' || isDone('vacuole') ? '#fff' : '#38bdf8'}
-              strokeWidth="3"
-            />
-            <text x="320" y="175" textAnchor="middle" fill="#bae6fd" fontSize="14" fontWeight="600">
-              Вакуоль
-            </text>
-          </g>
-        )}
-
-        {/* 3. ЯДРО С ЯДРЫШКОМ (растения и животные) */}
-        {cellType !== 'bacteria' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('nucleus')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('nucleus', 'nucleus')}
-          >
-            <circle
-              cx={cellType === 'plant' ? 140 : 210}
-              cy={cellType === 'plant' ? 145 : 155}
-              r="46"
-              fill="#6b21a8"
-              stroke={hovered === 'nucleus' || isDone('nucleus') ? '#fff' : '#d8b4fe'}
-              strokeWidth="3"
-            />
-            {/* Ядрышко внутри */}
-            <circle cx={cellType === 'plant' ? 148 : 218} cy={cellType === 'plant' ? 140 : 150} r="15" fill="#c084fc" />
-            <text
-              x={cellType === 'plant' ? 140 : 210}
-              y={cellType === 'plant' ? 206 : 216}
-              textAnchor="middle"
-              fill="#e9d5ff"
-              fontSize="13"
-              fontWeight="600"
-            >
-              Ядро
-            </text>
-          </g>
-        )}
-
-        {/* Кольцевая ДНК бактерии (нуклеоид) */}
-        {cellType === 'bacteria' && (
-          <g>
-            <path
-              d="M 180 165 C 195 135, 245 140, 255 168 C 265 195, 210 205, 195 180 C 185 162, 225 150, 235 172"
-              fill="none"
-              stroke="#c084fc"
-              strokeWidth="3"
-            />
-            <text x="220" y="215" textAnchor="middle" fill="#e9d5ff" fontSize="12">
-              Нуклеоид (ДНК без ядра)
-            </text>
-          </g>
-        )}
-
-        {/* 4. ХЛОРОПЛАСТЫ (только у растений, с гранами внутри) */}
-        {cellType === 'plant' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('chloroplast')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('chloroplast', 'chloroplast')}
-          >
-            <ellipse
-              cx="155"
-              cy="72"
-              rx="34"
-              ry="16"
-              fill="#15803d"
-              stroke={hovered === 'chloroplast' || isDone('chloroplast') ? '#fff' : '#4ade80'}
-              strokeWidth="2.5"
-            />
-            {/* Стопки тилакоидов (граны) */}
-            <line x1="140" y1="68" x2="140" y2="76" stroke="#86efac" strokeWidth="4" />
-            <line x1="155" y1="66" x2="155" y2="78" stroke="#86efac" strokeWidth="4" />
-            <line x1="170" y1="68" x2="170" y2="76" stroke="#86efac" strokeWidth="4" />
-          </g>
-        )}
-
-        {/* 5. МИТОХОНДРИЯ (с волнистой внутренней мембраной — кристами) */}
-        {cellType !== 'bacteria' && (
-          <g
-            style={{ cursor: 'pointer' }}
-            onMouseEnter={() => setHovered('mitochondria')}
-            onMouseLeave={() => setHovered(null)}
-            onClick={() => api.inspect('mitochondria', 'mitochondria')}
-          >
-            <ellipse
-              cx={cellType === 'plant' ? 145 : 335}
-              cy={cellType === 'plant' ? 255 : 185}
-              rx="36"
-              ry="17"
-              fill="#c2410c"
-              stroke={hovered === 'mitochondria' || isDone('mitochondria') ? '#fff' : '#fdba74'}
-              strokeWidth="2.5"
-            />
-            {/* Кристы (складки внутри митохондрии) */}
-            <path
-              d={
-                cellType === 'plant'
-                  ? 'M 120 255 L 130 247 L 138 263 L 146 247 L 154 263 L 164 255'
-                  : 'M 310 185 L 320 177 L 328 193 L 336 177 L 344 193 L 354 185'
-              }
-              fill="none"
-              stroke="#fed7aa"
-              strokeWidth="2"
-            />
-          </g>
-        )}
-
-        {/* 6. РИБОСОМЫ (мелкие жёлтые гранулы, есть во всех 3 типах клеток) */}
-        <g
-          style={{ cursor: 'pointer' }}
-          onMouseEnter={() => setHovered('ribosome')}
-          onMouseLeave={() => setHovered(null)}
-          onClick={() => api.inspect('ribosome', 'ribosome')}
-        >
-          {/* Невидимая зона для удобного клика мышкой */}
-          <circle cx={cellType === 'bacteria' ? 350 : 285} cy={cellType === 'bacteria' ? 155 : 70} r="28" fill="transparent" />
-          <circle cx={cellType === 'bacteria' ? 340 : 275} cy={cellType === 'bacteria' ? 148 : 66} r="5" fill="#facc15" />
-          <circle cx={cellType === 'bacteria' ? 358 : 292} cy={cellType === 'bacteria' ? 152 : 72} r="5" fill="#facc15" />
-          <circle cx={cellType === 'bacteria' ? 348 : 282} cy={cellType === 'bacteria' ? 166 : 80} r="5" fill="#facc15" />
-          <text
-            x={cellType === 'bacteria' ? 350 : 335}
-            y={cellType === 'bacteria' ? 192 : 74}
-            textAnchor="middle"
-            fill="#fef08a"
-            fontSize="12"
-          >
-            Рибосомы
-          </text>
-        </g>
-      </svg>
     </div>
   )
+}
+
+
+export function CellStructureWorld() {
+  return null
 }

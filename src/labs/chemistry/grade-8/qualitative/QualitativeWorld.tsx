@@ -1,221 +1,243 @@
 import { useState } from 'react'
+import { AlertCircle, CheckCircle2, Droplets, Eye, FlaskConical } from 'lucide-react'
 import { useLab } from '../../../../game/state'
 
-interface ReactionTube {
+type ReagentId = 'naoh' | 'agno3' | 'hcl'
+
+interface ReactionCase {
   id: string
-  solutionName: string
-  ionTarget: string
-  correctReagent: string
-  liquidColor: string
-  precipitateColor?: string
-  hasGas?: boolean
-  resultLabel: string
+  ionLabel: string
+  saltFormula: string
+  expectedReagent: ReagentId
+  baseColor: string
+  resultColor: string
+  effect: 'blue-precipitate' | 'white-precipitate' | 'gas' | 'brown-precipitate'
+  signTitle: string
+  equation: string
 }
 
-const REAGENTS = [
-  { id: 'naoh', label: 'NaOH (щёлочь)' },
-  { id: 'agno3', label: 'AgNO₃ (нитрат серебра)' },
-  { id: 'hcl', label: 'HCl (соляная кислота)' },
-] as const
+const REAGENTS: { id: ReagentId; label: string; desc: string }[] = [
+  { id: 'naoh', label: 'NaOH', desc: 'Гидроксид натрия (щёлочь)' },
+  { id: 'agno3', label: 'AgNO₃', desc: 'Нитрат серебра' },
+  { id: 'hcl', label: 'HCl', desc: 'Соляная кислота' },
+]
 
-const TUBES: ReactionTube[] = [
+const REACTIONS: ReactionCase[] = [
   {
-    id: 'cu-precipitate',
-    solutionName: 'Пробирка №1: CuSO₄',
-    ionTarget: 'Катион меди Cu²⁺',
-    correctReagent: 'naoh',
-    liquidColor: 'rgba(56, 189, 248, 0.28)',
-    precipitateColor: '#0284c7', // Голубой студенистый осадок Cu(OH)2
-    resultLabel: '↓ Голубой студенистый осадок Cu(OH)₂',
+    id: 'cu',
+    ionLabel: 'Ион Cu²⁺',
+    saltFormula: 'CuSO₄',
+    expectedReagent: 'naoh',
+    baseColor: 'rgba(56, 189, 248, 0.22)',
+    resultColor: 'rgba(14, 165, 233, 0.45)',
+    effect: 'blue-precipitate',
+    signTitle: 'Голубой осадок Cu(OH)₂↓',
+    equation: 'Cu²⁺ + 2OH⁻ → Cu(OH)₂↓',
   },
   {
-    id: 'fe-precipitate',
-    solutionName: 'Пробирка №2: FeCl₃',
-    ionTarget: 'Катион железа Fe³⁺',
-    correctReagent: 'naoh',
-    liquidColor: 'rgba(250, 204, 21, 0.25)',
-    precipitateColor: '#9a3412', // Бурый осадок Fe(OH)3
-    resultLabel: '↓ Бурый осадок Fe(OH)₃',
+    id: 'fe',
+    ionLabel: 'Ион Fe³⁺',
+    saltFormula: 'FeCl₃',
+    expectedReagent: 'naoh',
+    baseColor: 'rgba(251, 191, 36, 0.2)',
+    resultColor: 'rgba(180, 83, 9, 0.42)',
+    effect: 'brown-precipitate',
+    signTitle: 'Бурый осадок Fe(OH)₃↓',
+    equation: 'Fe³⁺ + 3OH⁻ → Fe(OH)₃↓',
   },
   {
-    id: 'cl-precipitate',
-    solutionName: 'Пробирка №3: NaCl',
-    ionTarget: 'Хлорид-ион Cl⁻',
-    correctReagent: 'agno3',
-    liquidColor: 'rgba(255, 255, 255, 0.14)',
-    precipitateColor: '#f8fafc', // Белый творожистый осадок AgCl
-    resultLabel: '↓ Белый творожистый осадок AgCl',
+    id: 'cl',
+    ionLabel: 'Ион Cl⁻',
+    saltFormula: 'NaCl',
+    expectedReagent: 'agno3',
+    baseColor: 'rgba(226, 232, 240, 0.12)',
+    resultColor: 'rgba(226, 232, 240, 0.24)',
+    effect: 'white-precipitate',
+    signTitle: 'Белый творожистый AgCl↓',
+    equation: 'Ag⁺ + Cl⁻ → AgCl↓',
   },
   {
-    id: 'co3-gas',
-    solutionName: 'Пробирка №4: Na₂CO₃',
-    ionTarget: 'Карбонат-ион CO₃²⁻',
-    correctReagent: 'hcl',
-    liquidColor: 'rgba(255, 255, 255, 0.14)',
-    hasGas: true, // Выделение углекислого газа CO2
-    resultLabel: '↑ Выделение газа без запаха (CO₂)',
+    id: 'co3',
+    ionLabel: 'Ион CO₃²⁻',
+    saltFormula: 'Na₂CO₃',
+    expectedReagent: 'hcl',
+    baseColor: 'rgba(226, 232, 240, 0.12)',
+    resultColor: 'rgba(226, 232, 240, 0.2)',
+    effect: 'gas',
+    signTitle: 'Газ CO₂↑ («вскипание»)',
+    equation: 'CO₃²⁻ + 2H⁺ → CO₂↑ + H₂O',
   },
 ]
 
 export function QualitativeWorld() {
-  const { state, api } = useLab()
-  const [selectedReagent, setSelectedReagent] = useState<string>('naoh')
+  const { state, facts, api } = useLab()
+  const [selectedReagent, setSelectedReagent] = useState<ReagentId>('naoh')
   const [wrongTubeId, setWrongTubeId] = useState<string | null>(null)
 
-  const handlePour = (tube: ReactionTube) => {
-    if (selectedReagent === tube.correctReagent) {
-      setWrongTubeId(null)
-      api.inspect(tube.id, tube.id)
-    } else {
-      setWrongTubeId(tube.id)
+  const factKeys = Object.keys(facts)
+  const resolveFactId = (shortKey: string, fallbackIndex: number) =>
+    factKeys.find((k) => k.toLowerCase().includes(shortKey)) ?? factKeys[fallbackIndex] ?? shortKey
+
+  const handlePour = (item: ReactionCase, idx: number) => {
+    const targetId = resolveFactId(item.id, idx)
+
+    if (selectedReagent !== item.expectedReagent) {
+      setWrongTubeId(item.id)
       setTimeout(() => setWrongTubeId(null), 1600)
+      return
     }
+
+    setWrongTubeId(null)
+    api.inspect(targetId, targetId)
   }
 
   return (
     <div
+      className="h-dvh overflow-y-auto overscroll-none bg-[#070b14] px-3 pb-24 pt-48 text-slate-100 sm:px-6 sm:pt-44 lg:flex lg:flex-col lg:justify-center lg:pl-[360px] lg:pr-8 lg:pt-24"
       style={{
-        width: '100%',
-        height: '100vh',
-        background: 'radial-gradient(circle at center, #132d24 0%, #07140e 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '32px',
-        padding: '24px',
+        backgroundImage: `
+          radial-gradient(circle at 50% 15%, rgba(56, 189, 248, 0.12) 0%, transparent 55%),
+          linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: '100% 100%, 36px 36px, 36px 36px',
       }}
     >
-      {/* Полка с реактивами */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '10px',
-          alignItems: 'center',
-          padding: '12px 18px',
-          borderRadius: '18px',
-          border: '1px solid var(--line)',
-          background: 'var(--glass)',
-          marginTop: '40px',
-        }}
-      >
-        <span style={{ fontSize: '13px', color: 'var(--muted)', marginRight: '6px', fontWeight: 600 }}>
-          1. Выбери реактив:
-        </span>
-        {REAGENTS.map((r) => {
-          const active = selectedReagent === r.id
-          return (
-            <button
-              key={r.id}
-              type="button"
-              className={active ? 'primary' : 'ghost'}
-              style={{ padding: '8px 14px', fontSize: '14px' }}
-              onClick={() => setSelectedReagent(r.id)}
-            >
-              🧪 {r.label}
-            </button>
-          )
-        })}
-      </div>
+      <div className="mx-auto w-full max-w-4xl">
+        {/* Полка с реактивами сверху */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-3 backdrop-blur-md sm:mb-6 sm:px-4">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+            <Droplets className="h-4 w-4 shrink-0 text-sky-400" />
+            <span>Полка реактивов:</span>
+          </div>
 
-      {/* Штатив с 4 пробирками */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '36px' }}>
-        {TUBES.map((tube) => {
-          const done = state.studied.includes(tube.id)
-          const isWrong = wrongTubeId === tube.id
-
-          return (
-            <div key={tube.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '165px' }}>
-              <button
-                type="button"
-                className={done ? 'ghost' : 'primary'}
-                style={{
-                  padding: '8px 14px',
-                  fontSize: '13px',
-                  borderColor: isWrong ? '#f87171' : undefined,
-                  color: isWrong ? '#fca5a5' : undefined,
-                }}
-                onClick={() => handlePour(tube)}
-              >
-                {isWrong ? 'Нет признаков реакции!' : done ? '✓ Реакция проведена' : '2. Добавить в пробирку'}
-              </button>
-
-              {/* Пробирка */}
-              <div
-                onClick={() => handlePour(tube)}
-                style={{
-                  width: '74px',
-                  height: '210px',
-                  border: `3px solid ${isWrong ? '#f87171' : 'rgba(198, 255, 214, 0.45)'}`,
-                  borderTop: 'none',
-                  borderRadius: '0 0 37px 37px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  transition: 'border-color 0.3s',
-                }}
-              >
-                {/* Основной раствор */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '66%',
-                    backgroundColor: tube.liquidColor,
+          <div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto">
+            {REAGENTS.map((r) => {
+              const active = selectedReagent === r.id
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  title={r.desc}
+                  onClick={() => {
+                    setSelectedReagent(r.id)
+                    setWrongTubeId(null)
                   }}
-                />
+                  className={`rounded-xl border px-3 py-1.5 font-mono text-xs font-extrabold transition ${
+                    active
+                      ? 'border-sky-400 bg-sky-500/20 text-sky-300 shadow-sm shadow-sky-500/20'
+                      : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-                {/* Слой осадка на дне */}
-                {done && tube.precipitateColor && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: '26%',
-                      backgroundColor: tube.precipitateColor,
-                      borderRadius: '0 0 34px 34px',
-                      boxShadow: '0 -4px 12px rgba(0,0,0,0.25)',
-                    }}
-                  />
-                )}
+        {/* Адаптивная сетка 4 пробирок */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+          {REACTIONS.map((item, idx) => {
+            const targetId = resolveFactId(item.id, idx)
+            const isDone = state.studied.includes(targetId)
+            const isWrong = wrongTubeId === item.id
 
-                {/* Пузырьки газа при реакции с карбонатом */}
-                {done && tube.hasGas && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: '35% 16px 12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-around',
-                      alignItems: 'center',
-                      fontSize: '14px',
-                      color: '#e0f2fe',
-                      letterSpacing: '4px',
-                    }}
-                  >
-                    <span>○ ◦ ○</span>
-                    <span>◦ ○ ◦</span>
-                    <span>○ ◦ ○</span>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>{tube.solutionName}</div>
-                <div style={{ fontSize: '12px', color: done ? 'var(--accent)' : 'var(--muted)', marginTop: '4px', lineHeight: 1.35 }}>
-                  {done ? tube.resultLabel : `Определить: ${tube.ionTarget}`}
+            return (
+              <div
+                key={item.id}
+                className={`flex flex-col justify-between rounded-2xl border p-3 transition sm:p-4 ${
+                  isDone
+                    ? 'border-emerald-400/60 bg-emerald-950/20'
+                    : isWrong
+                    ? 'border-amber-400/70 bg-amber-950/20'
+                    : 'border-slate-800 bg-slate-900/85'
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <span className="rounded-lg bg-sky-500/15 px-2 py-0.5 font-mono text-[11px] font-extrabold text-sky-300 sm:text-xs">
+                    {item.ionLabel}
+                  </span>
+                  {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />}
                 </div>
+
+                <div className="my-2 flex flex-col items-center">
+                  <div className="mb-1.5 font-mono text-xs font-bold text-slate-300">
+                    {item.saltFormula}
+                  </div>
+
+                  <div className="relative flex h-24 w-11 flex-col justify-end overflow-hidden rounded-b-full border-2 border-slate-600/80 bg-slate-950/60 p-0.5 sm:h-32 sm:w-14">
+                    <div
+                      className="relative w-full rounded-b-full transition-all duration-500"
+                      style={{
+                        height: '68%',
+                        backgroundColor: isDone ? item.resultColor : item.baseColor,
+                      }}
+                    >
+                      {isDone && item.effect === 'gas' && (
+                        <div className="absolute inset-0 flex items-center justify-around opacity-90">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white" />
+                          <span className="h-2 w-2 animate-ping rounded-full bg-white" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white" />
+                        </div>
+                      )}
+                      {isDone && item.effect === 'blue-precipitate' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-4 rounded-b-full bg-sky-400" />
+                      )}
+                      {isDone && item.effect === 'white-precipitate' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-4 rounded-b-full bg-slate-100" />
+                      )}
+                      {isDone && item.effect === 'brown-precipitate' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-4 rounded-b-full bg-amber-700" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 min-h-[32px] text-center text-[11px] font-semibold leading-tight text-slate-300 sm:text-xs">
+                    {isWrong ? (
+                      <span className="inline-flex items-center gap-1 text-amber-300">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                        Видимых признаков нет
+                      </span>
+                    ) : isDone ? (
+                      item.signTitle
+                    ) : (
+                      'Исходный раствор'
+                    )}
+                  </div>
+
+                  {isDone && (
+                    <div className="mt-1 rounded-md bg-slate-950/80 px-2 py-0.5 font-mono text-[10px] text-emerald-300">
+                      {item.equation}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handlePour(item, idx)}
+                  className={`mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 font-mono text-xs font-extrabold transition ${
+                    isDone
+                      ? 'border border-slate-700 bg-slate-800/80 text-slate-200 hover:bg-slate-800'
+                      : 'bg-gradient-to-r from-sky-400 to-emerald-400 text-slate-950 hover:opacity-95'
+                  }`}
+                >
+                  {isDone ? (
+                    <>
+                      <Eye className="h-3.5 w-3.5 shrink-0" />
+                      <span>Наблюдение</span>
+                    </>
+                  ) : (
+                    <>
+                      <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+                      <span>Прилить {REAGENTS.find((r) => r.id === selectedReagent)?.label}</span>
+                    </>
+                  )}
+                </button>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     </div>
   )

@@ -1,268 +1,364 @@
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useMemo, useRef, useState } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import {
-  CanvasTexture,
+  CatmullRomCurve3,
   DoubleSide,
-  Sprite,
-  SpriteMaterial,
-  SRGBColorSpace,
+  TubeGeometry,
   Vector3,
   type Group,
-  type Mesh,
 } from 'three'
-import type { Vec3 } from '../../../../platform/types'
+import { useLab } from '../../../../game/state'
 import type { DivisionMode, DivisionPhase } from './DivisionControls'
 
-const PHASE_TITLES: Record<DivisionPhase, string> = {
-  prophase: '1. Профаза',
-  metaphase: '2. Метафаза',
-  anaphase: '3. Анафаза',
-  telophase: '4. Телофаза',
-}
-
-function Tag({ text, position, color }: { text: string; position: Vec3; color: string }) {
-  const sprite = useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = 768
-    canvas.height = 140
-    const ctx = canvas.getContext('2d')
-    const texture = new CanvasTexture(canvas)
-    texture.colorSpace = SRGBColorSpace
-    if (ctx) {
-      ctx.clearRect(0, 0, 768, 140)
-      ctx.font = '700 42px "Segoe UI", sans-serif'
-      ctx.fillStyle = color
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(text, 384, 70)
-      texture.needsUpdate = true
-    }
-    const material = new SpriteMaterial({ map: texture, transparent: true, depthWrite: false })
-    const next = new Sprite(material)
-    next.scale.set(3.2, 0.58, 1)
-    return next
-  }, [text, color])
-
-  return <primitive object={sprite} position={position} />
-}
-
-/** Отдельная 3D-хромосома / хроматида, плавно плывущая в целевую точку */
-function SmoothChromosome({
-  targetPos,
-  targetRotZ,
+/** Реалистичная 3D-хромосома: две сестринские хроматиды (X) или одна дочерняя хроматида (V) */
+function Chromosome3D({
   color,
-  crossoverColor,
-  twoChromatids,
+  isDuplicated,
+  scale = 1,
+  onClick,
+  onHover,
 }: {
-  targetPos: Vec3
-  targetRotZ: number
   color: string
-  crossoverColor?: string
-  twoChromatids: boolean
+  isDuplicated: boolean
+  scale?: number
+  onClick: () => void
+  onHover: (v: boolean) => void
 }) {
-  const groupRef = useRef<Group>(null)
-  const targetVec = useMemo(() => new Vector3(...targetPos), [targetPos])
-
-  useFrame((_, delta) => {
-    const g = groupRef.current
-    if (!g) return
-    const speed = Math.min(1, delta * 3.2)
-    g.position.lerp(targetVec, speed)
-    g.rotation.z += (targetRotZ - g.rotation.z) * speed
-  })
+  const { armLeftGeo, armRightGeo } = useMemo(() => {
+    const leftCurve = new CatmullRomCurve3([
+      new Vector3(-0.18, 0.44, 0.03),
+      new Vector3(-0.04, 0.06, 0),
+      new Vector3(-0.04, -0.06, 0),
+      new Vector3(-0.18, -0.44, -0.03),
+    ])
+    const rightCurve = new CatmullRomCurve3([
+      new Vector3(0.18, 0.44, -0.03),
+      new Vector3(0.04, 0.06, 0),
+      new Vector3(0.04, -0.06, 0),
+      new Vector3(0.18, -0.44, 0.03),
+    ])
+    return {
+      armLeftGeo: new TubeGeometry(leftCurve, 24, 0.062, 12, false),
+      armRightGeo: new TubeGeometry(rightCurve, 24, 0.062, 12, false),
+    }
+  }, [])
 
   return (
-    <group ref={groupRef} position={targetPos}>
+    <group
+      scale={scale}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        onHover(true)
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => {
+        onHover(false)
+        document.body.style.cursor = 'grab'
+      }}
+    >
       {/* Первая хроматида */}
-      <mesh position={[twoChromatids ? -0.09 : 0, 0, 0]} rotation={[0, 0, twoChromatids ? 0.18 : 0]}>
-        <capsuleGeometry args={[0.072, 0.55, 6, 12]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.35} />
+      <mesh geometry={armLeftGeo}>
+        <meshPhysicalMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.28}
+          roughness={0.28}
+          metalness={0.08}
+        />
       </mesh>
 
-      {/* Вторая хроматида (для X-образной двухроматидной хромосомы) */}
-      {twoChromatids && (
-        <mesh position={[0.09, 0, 0]} rotation={[0, 0, -0.18]}>
-          <capsuleGeometry args={[0.072, 0.55, 6, 12]} />
-          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.35} />
+      {/* Вторая сестринская хроматида (только у двухроматидных хромосом) */}
+      {isDuplicated && (
+        <mesh geometry={armRightGeo}>
+          <meshPhysicalMaterial
+            color={color}
+            emissive={color}
+            emissiveIntensity={0.28}
+            roughness={0.28}
+            metalness={0.08}
+          />
         </mesh>
       )}
 
-      {/* Участок кроссинговера */}
-      {crossoverColor && (
-        <mesh position={[twoChromatids ? 0.13 : 0, -0.22, 0.02]} rotation={[0, 0, twoChromatids ? -0.18 : 0]}>
-          <sphereGeometry args={[0.082, 12, 12]} />
-          <meshStandardMaterial color={crossoverColor} emissive={crossoverColor} emissiveIntensity={0.6} />
-        </mesh>
-      )}
-
-      {/* Центромера */}
-      <mesh>
-        <sphereGeometry args={[0.088, 12, 12]} />
-        <meshStandardMaterial color="#f8fafc" />
+      {/* Центромера / кинетохор */}
+      <mesh position-x={isDuplicated ? 0 : -0.04}>
+        <sphereGeometry args={[0.078, 16, 16]} />
+        <meshStandardMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={0.85} />
       </mesh>
     </group>
   )
 }
 
-export function Division3DWorld({
-  mode = 'mitosis',
-  phase = 'prophase',
+/** Клеточный центр (пара перпендикулярных центриолей на полюсе клетки) */
+function Centrosome({
+  positionX,
+  onClick,
 }: {
-  markerIds?: readonly string[]
-  mode?: DivisionMode
-  phase?: DivisionPhase
+  positionX: number
+  onClick: () => void
 }) {
-  const cellGroup = useRef<Group>(null)
-  const mainMembraneRef = useRef<Mesh>(null)
+  return (
+    <group
+      position-x={positionX}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'grab'
+      }}
+    >
+      <mesh rotation-z={Math.PI / 2}>
+        <cylinderGeometry args={[0.065, 0.065, 0.24, 12]} />
+        <meshStandardMaterial color="#f59e0b" emissive="#d97706" emissiveIntensity={0.6} />
+      </mesh>
+      <mesh position-y={0.1} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.065, 0.065, 0.24, 12]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#d97706" emissiveIntensity={0.6} />
+      </mesh>
+      <pointLight intensity={1.8} distance={2.2} color="#fbbf24" />
+    </group>
+  )
+}
 
-  useFrame(({ clock }, delta) => {
-    if (cellGroup.current) {
-      cellGroup.current.position.y = 1.95 + Math.sin(clock.elapsedTime * 1.4) * 0.04
-    }
-    if (mainMembraneRef.current) {
-      const targetScaleX = phase === 'anaphase' ? 1.38 : 1.05
-      mainMembraneRef.current.scale.x += (targetScaleX - mainMembraneRef.current.scale.x) * Math.min(1, delta * 3)
+/** Изогнутая 3D-нить веретена деления от центриоли к хромосоме */
+function SpindleThread({
+  fromX,
+  to,
+}: {
+  fromX: number
+  to: [number, number, number]
+}) {
+  const geo = useMemo(() => {
+    const midX = (fromX + to[0]) * 0.5
+    const curve = new CatmullRomCurve3([
+      new Vector3(fromX, 0, 0),
+      new Vector3(midX, to[1] * 0.72, to[2] * 0.72),
+      new Vector3(to[0], to[1], to[2]),
+    ])
+    return new TubeGeometry(curve, 20, 0.012, 6, false)
+  }, [fromX, to])
+
+  return (
+    <mesh geometry={geo} raycast={() => null}>
+      <meshBasicMaterial color="#7dd3fc" transparent opacity={0.42} />
+    </mesh>
+  )
+}
+export function Division3DWorld({
+  mode,
+  phase,
+}: {
+  mode: DivisionMode
+  phase: DivisionPhase
+}) {
+  const { facts, api } = useLab()
+  const { size } = useThree()
+  const rootRef = useRef<Group>(null)
+  const [, setHovered] = useState(false)
+
+  const isMobile = size.width < 640
+  const sceneScale = isMobile ? 0.56 : 0.78
+  const scenePosX = isMobile ? 0 : -0.35
+
+  const factKeys = Object.keys(facts)
+  const inspectByIndex = (idx: number) => {
+    const key = factKeys[idx] ?? factKeys[0]
+    if (key) api.inspect(key, key)
+  }
+
+  useFrame((_, delta) => {
+    if (rootRef.current) {
+      rootRef.current.rotation.y += delta * 0.12
     }
   })
 
-  // Безопасное расхождение, чтобы хромосомы оставались внутри новых ядер и не наезжали на центриоли
-  const spread = phase === 'anaphase' ? 1.45 : phase === 'telophase' ? 1.72 : 0
-  const isSplit = phase === 'anaphase' || phase === 'telophase'
+  const poleX = phase === 'prophase' ? 1.55 : phase === 'telophase' ? 2.25 : 1.95
+  const isMeiosis1 = mode === 'meiosis1'
+
+  // Координаты и структура хромосом в зависимости от режима (Митоз / Мейоз I / Мейоз II) и фазы
+  const chromosomeItems = useMemo(() => {
+    // 1. ПРОФАЗА: хроматин спирализуется в X-хромосомы; в Мейозе I гомологичные пары сближаются (биваленты / конъюгация)
+    if (phase === 'prophase') {
+      if (isMeiosis1) {
+        return [
+          { pos: [-0.28, 0.58, 0.15] as [number, number, number], rotZ: 0.25, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [-0.05, 0.52, -0.1] as [number, number, number], rotZ: -0.2, color: '#fb7185', dup: true, pole: poleX },
+          { pos: [0.12, -0.52, 0.12] as [number, number, number], rotZ: 0.3, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [0.34, -0.58, -0.14] as [number, number, number], rotZ: -0.25, color: '#fb7185', dup: true, pole: poleX },
+        ]
+      }
+      return [
+        { pos: [-0.38, 0.55, 0.22] as [number, number, number], rotZ: 0.45, color: '#38bdf8', dup: true, pole: -poleX },
+        { pos: [0.35, 0.42, -0.2] as [number, number, number], rotZ: -0.5, color: '#fb7185', dup: true, pole: poleX },
+        { pos: [-0.25, -0.48, -0.18] as [number, number, number], rotZ: -0.35, color: '#34d399', dup: true, pole: -poleX },
+        { pos: [0.32, -0.42, 0.24] as [number, number, number], rotZ: 0.6, color: '#c084fc', dup: true, pole: poleX },
+      ]
+    }
+
+    // 2. МЕТАФАЗА: выстраивание строго по экватору (в Мейозе I — биваленты по обе стороны экватора)
+    if (phase === 'metaphase') {
+      if (isMeiosis1) {
+        return [
+          { pos: [-0.24, 0.65, 0.1] as [number, number, number], rotZ: 0, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [0.24, 0.65, -0.1] as [number, number, number], rotZ: 0, color: '#fb7185', dup: true, pole: poleX },
+          { pos: [-0.24, -0.65, -0.1] as [number, number, number], rotZ: 0, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [0.24, -0.65, 0.1] as [number, number, number], rotZ: 0, color: '#fb7185', dup: true, pole: poleX },
+        ]
+      }
+      return [
+        { pos: [0, 0.85, 0.12] as [number, number, number], rotZ: 0, color: '#38bdf8', dup: true, pole: -poleX },
+        { pos: [0, 0.28, -0.14] as [number, number, number], rotZ: 0, color: '#fb7185', dup: true, pole: poleX },
+        { pos: [0, -0.28, 0.14] as [number, number, number], rotZ: 0, color: '#34d399', dup: true, pole: -poleX },
+        { pos: [0, -0.85, -0.12] as [number, number, number], rotZ: 0, color: '#c084fc', dup: true, pole: poleX },
+      ]
+    }
+
+    // 3. АНАФАЗА: в Мейозе I к полюсам расходятся целые двухроматидные гомологи (dup: true), в Митозе и Мейозе II — однороматидные (dup: false)
+    if (phase === 'anaphase') {
+      if (isMeiosis1) {
+        return [
+          { pos: [-1.05, 0.56, 0.12] as [number, number, number], rotZ: 0.15, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [-1.05, -0.56, -0.12] as [number, number, number], rotZ: -0.15, color: '#38bdf8', dup: true, pole: -poleX },
+          { pos: [1.05, 0.56, -0.12] as [number, number, number], rotZ: -0.15, color: '#fb7185', dup: true, pole: poleX },
+          { pos: [1.05, -0.56, 0.12] as [number, number, number], rotZ: 0.15, color: '#fb7185', dup: true, pole: poleX },
+        ]
+      }
+      return [
+        { pos: [-1.1, 0.72, 0.1] as [number, number, number], rotZ: 0.2, color: '#38bdf8', dup: false, pole: -poleX },
+        { pos: [-1.1, 0.24, -0.1] as [number, number, number], rotZ: 0.1, color: '#fb7185', dup: false, pole: -poleX },
+        { pos: [-1.1, -0.24, 0.1] as [number, number, number], rotZ: -0.1, color: '#34d399', dup: false, pole: -poleX },
+        { pos: [-1.1, -0.72, -0.1] as [number, number, number], rotZ: -0.2, color: '#c084fc', dup: false, pole: -poleX },
+        { pos: [1.1, 0.72, 0.1] as [number, number, number], rotZ: -0.2, color: '#38bdf8', dup: false, pole: poleX },
+        { pos: [1.1, 0.24, -0.1] as [number, number, number], rotZ: -0.1, color: '#fb7185', dup: false, pole: poleX },
+        { pos: [1.1, -0.24, 0.1] as [number, number, number], rotZ: 0.1, color: '#34d399', dup: false, pole: poleX },
+        { pos: [1.1, -0.72, -0.1] as [number, number, number], rotZ: 0.2, color: '#c084fc', dup: false, pole: poleX },
+      ]
+    }
+
+    // 4. ТЕЛОФАЗА: хромосомы на полюсах вокруг формирующихся дочерних ядер
+    return [
+      { pos: [-1.45, 0.36, 0.1] as [number, number, number], rotZ: 0.35, color: '#38bdf8', dup: isMeiosis1, pole: -poleX },
+      { pos: [-1.45, -0.36, -0.1] as [number, number, number], rotZ: -0.35, color: '#fb7185', dup: isMeiosis1, pole: -poleX },
+      { pos: [1.45, 0.36, -0.1] as [number, number, number], rotZ: -0.35, color: '#38bdf8', dup: isMeiosis1, pole: poleX },
+      { pos: [1.45, -0.36, 0.1] as [number, number, number], rotZ: 0.35, color: '#fb7185', dup: isMeiosis1, pole: poleX },
+    ]
+  }, [phase, isMeiosis1, poleX])
 
   return (
-    <>
-      <color attach="background" args={['#0d1f22']} />
-      <ambientLight intensity={1.15} />
-      <directionalLight position={[4, 7, 5]} intensity={1.5} />
+    <group>
+      <color attach="background" args={['#070b14']} />
+      <ambientLight intensity={0.85} />
+      <directionalLight position-x={4} position-y={7} position-z={6} intensity={1.5} color="#ffffff" />
+      <pointLight position-x={-4} position-y={2} position-z={4} intensity={1.1} color="#38bdf8" />
+      <pointLight position-x={4} position-y={2} position-z={4} intensity={1.1} color="#34d399" />
 
-      <group ref={cellGroup} position={[-0.6, 1.95, 0]}>
-        {/* Оболочка клетки */}
+      <group ref={rootRef} position-x={scenePosX} position-y={1.88} scale={sceneScale}>
+        {/* КЛЕТОЧНАЯ МЕМБРАНА (в Телофазе формирует перетяжку цитокинеза из двух дочерних клеток) */}
         {phase !== 'telophase' ? (
-          <mesh ref={mainMembraneRef} scale={[1.05, 1, 0.85]}>
-            <sphereGeometry args={[2.55, 32, 24]} />
-            <meshStandardMaterial color="#34d399" transparent opacity={0.14} roughness={0.2} depthWrite={false} />
+          <mesh
+            scale={[phase === 'anaphase' ? 1.48 : 1.28, 1.0, 1.0]}
+            onClick={(e) => {
+              e.stopPropagation()
+              inspectByIndex(3)
+            }}
+          >
+            <sphereGeometry args={[1.85, 40, 40]} />
+            <meshPhysicalMaterial
+              color="#38bdf8"
+              transparent
+              opacity={0.15}
+              roughness={0.2}
+              side={DoubleSide}
+              depthWrite={false}
+            />
           </mesh>
         ) : (
-          <>
-            <mesh position={[-1.75, 0, 0]}>
-              <sphereGeometry args={[1.55, 28, 22]} />
-              <meshStandardMaterial color="#34d399" transparent opacity={0.18} depthWrite={false} />
+          <group
+            onClick={(e) => {
+              e.stopPropagation()
+              inspectByIndex(3)
+            }}
+          >
+            {/* Левая дочерняя клетка */}
+            <mesh position-x={-1.32}>
+              <sphereGeometry args={[1.38, 36, 36]} />
+              <meshPhysicalMaterial
+                color="#34d399"
+                transparent
+                opacity={0.18}
+                roughness={0.2}
+                side={DoubleSide}
+                depthWrite={false}
+              />
             </mesh>
-            <mesh position={[1.75, 0, 0]}>
-              <sphereGeometry args={[1.55, 28, 22]} />
-              <meshStandardMaterial color="#34d399" transparent opacity={0.18} depthWrite={false} />
+            {/* Правая дочерняя клетка */}
+            <mesh position-x={1.32}>
+              <sphereGeometry args={[1.38, 36, 36]} />
+              <meshPhysicalMaterial
+                color="#34d399"
+                transparent
+                opacity={0.18}
+                roughness={0.2}
+                side={DoubleSide}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
+        )}
+
+        {/* ЯДЕРНАЯ ОБОЛОЧКА (растворяется в Профазе и восстанавливается в Телофазе) */}
+        {phase === 'prophase' && (
+          <mesh raycast={() => null}>
+            <sphereGeometry args={[1.05, 24, 24]} />
+            <meshBasicMaterial color="#a855f7" wireframe transparent opacity={0.24} />
+          </mesh>
+        )}
+
+        {phase === 'telophase' && (
+          <>
+            <mesh position-x={-1.45} raycast={() => null}>
+              <sphereGeometry args={[0.78, 28, 28]} />
+              <meshPhysicalMaterial color="#a855f7" transparent opacity={0.25} roughness={0.25} depthWrite={false} />
+            </mesh>
+            <mesh position-x={1.45} raycast={() => null}>
+              <sphereGeometry args={[0.78, 28, 28]} />
+              <meshPhysicalMaterial color="#a855f7" transparent opacity={0.25} roughness={0.25} depthWrite={false} />
             </mesh>
           </>
         )}
 
-        {/* Центриоли на полюсах (в телофазе сдвинуты к внешним краям дочерних клеток) */}
-        <mesh position={[phase === 'telophase' ? -3.05 : -2.6, 0, 0]}>
-          <cylinderGeometry args={[0.12, 0.12, 0.35, 12]} />
-          <meshStandardMaterial color="#facc15" emissive="#eab308" emissiveIntensity={0.6} />
-        </mesh>
-        <mesh position={[phase === 'telophase' ? 3.05 : 2.6, 0, 0]}>
-          <cylinderGeometry args={[0.12, 0.12, 0.35, 12]} />
-          <meshStandardMaterial color="#facc15" emissive="#eab308" emissiveIntensity={0.6} />
-        </mesh>
+        {/* ЦЕНТРИОЛИ НА ПОЛЮСАХ */}
+        <Centrosome positionX={-poleX} onClick={() => inspectByIndex(1)} />
+        <Centrosome positionX={poleX} onClick={() => inspectByIndex(1)} />
 
-        {/* Нити веретена деления (исчезают в телофазе!) */}
+        {/* НИТИ ВЕРЕТЕНА ДЕЛЕНИЯ (активны в Профазе, Метафазе и Анафазе) */}
         {phase !== 'telophase' &&
-          [-0.95, -0.32, 0.32, 0.95].map((y, idx) => (
-            <mesh key={idx} position={[0, y, 0]} rotation={[0, 0, Math.PI / 2]}>
-              <cylinderGeometry args={[0.015, 0.015, 5.1, 8]} />
-              <meshBasicMaterial color="#fef08a" transparent opacity={0.26} side={DoubleSide} />
-            </mesh>
+          chromosomeItems.map((item, idx) => (
+            <SpindleThread key={`spindle-${idx}`} fromX={item.pole} to={item.pos} />
           ))}
 
-        {/* РЕЖИМ 1: МИТОЗ (в метафазе 1 ряд из 4 хромосом; в анафазе к обоим полюсам идут ВСЕ 4 цвета!) */}
-        {mode === 'mitosis' && (
-          <>
-            {/* 1. Голубая хромосома -> делится на левую и правую хроматиды */}
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [-0.45, 0.75, 0.1] : [-spread, 0.95, 0.1]}
-              targetRotZ={phase === 'prophase' ? 0.4 : 0}
-              color="#38bdf8"
-              twoChromatids={!isSplit}
+        {/* ХРОМОСОМЫ */}
+        {chromosomeItems.map((item, idx) => (
+          <group key={`chr-${idx}`} position-x={item.pos[0]} position-y={item.pos[1]} position-z={item.pos[2]} rotation-z={item.rotZ}>
+            <Chromosome3D
+              color={item.color}
+              isDuplicated={item.dup}
+              scale={0.85}
+              onClick={() => inspectByIndex(idx % Math.max(1, factKeys.length))}
+              onHover={setHovered}
             />
-            {isSplit && (
-              <SmoothChromosome targetPos={[spread, 0.95, 0.1]} targetRotZ={0} color="#38bdf8" twoChromatids={false} />
-            )}
-
-            {/* 2. Розовая хромосома -> делится на левую и правую хроматиды */}
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [0.45, 0.65, -0.1] : [-spread, 0.32, -0.1]}
-              targetRotZ={phase === 'prophase' ? -0.35 : 0}
-              color="#fb7185"
-              twoChromatids={!isSplit}
-            />
-            {isSplit && (
-              <SmoothChromosome targetPos={[spread, 0.32, -0.1]} targetRotZ={0} color="#fb7185" twoChromatids={false} />
-            )}
-
-            {/* 3. Зелёная хромосома -> делится на левую и правую хроматиды */}
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [-0.4, -0.65, -0.15] : [-spread, -0.32, -0.15]}
-              targetRotZ={phase === 'prophase' ? -0.5 : 0}
-              color="#4ade80"
-              twoChromatids={!isSplit}
-            />
-            {isSplit && (
-              <SmoothChromosome targetPos={[spread, -0.32, -0.15]} targetRotZ={0} color="#4ade80" twoChromatids={false} />
-            )}
-
-            {/* 4. Оранжевая хромосома -> делится на левую и правую хроматиды */}
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [0.4, -0.75, 0.15] : [-spread, -0.95, 0.15]}
-              targetRotZ={phase === 'prophase' ? 0.45 : 0}
-              color="#fb923c"
-              twoChromatids={!isSplit}
-            />
-            {isSplit && (
-              <SmoothChromosome targetPos={[spread, -0.95, 0.15]} targetRotZ={0} color="#fb923c" twoChromatids={false} />
-            )}
-          </>
-        )}
-
-        {/* РЕЖИМ 2: МЕЙОЗ I (биваленты в 2 ряда; к полюсам расходятся целые X-хромосомы!) */}
-        {mode === 'meiosis1' && (
-          <>
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [-0.25, 0.65, 0.1] : [-0.22 - spread, 0.65, 0.1]}
-              targetRotZ={phase === 'prophase' ? 0.25 : 0}
-              color="#38bdf8"
-              crossoverColor="#fb7185"
-              twoChromatids={true}
-            />
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [0.25, 0.65, -0.1] : [0.22 + spread, 0.65, -0.1]}
-              targetRotZ={phase === 'prophase' ? -0.25 : 0}
-              color="#fb7185"
-              crossoverColor="#38bdf8"
-              twoChromatids={true}
-            />
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [-0.25, -0.65, -0.15] : [-0.22 - spread, -0.65, -0.15]}
-              targetRotZ={phase === 'prophase' ? -0.25 : 0}
-              color="#4ade80"
-              crossoverColor="#fb923c"
-              twoChromatids={true}
-            />
-            <SmoothChromosome
-              targetPos={phase === 'prophase' ? [0.25, -0.65, 0.15] : [0.22 + spread, -0.65, 0.15]}
-              targetRotZ={phase === 'prophase' ? 0.25 : 0}
-              color="#fb923c"
-              crossoverColor="#4ade80"
-              twoChromatids={true}
-            />
-          </>
-        )}
-
-        <Tag
-        text={`${mode === 'mitosis' ? 'Митоз' : 'Мейоз I'} • ${PHASE_TITLES[phase]}`}
-        position={[0, 3.05, 0]}
-        color="#dff56a"
-      />
+          </group>
+        ))}
+      </group>
     </group>
-  </>
-)
+  )
 }

@@ -1,325 +1,228 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
+import { CheckCircle2, Droplets, FlaskConical, HelpCircle } from 'lucide-react'
 import { useLab } from '../../../../game/state'
 
-type MysterySubstance = 'naoh' | 'hcl' | 'na2co3' | 'cuso4'
-type TestReagent = 'phenolphthalein' | 'naoh_drop' | 'hcl_drop' | 'bacl2_drop'
+type Formula = 'NaOH' | 'HCl' | 'Na₂CO₃' | 'CuSO₄'
+type Reagent = 'phenolphthalein' | 'hcl' | 'bacl2'
 
-const SUBSTANCES: { id: MysterySubstance; formula: string; name: string }[] = [
-  { id: 'naoh', formula: 'NaOH', name: 'Гидроксид натрия (щёлочь)' },
-  { id: 'hcl', formula: 'HCl', name: 'Соляная кислота' },
-  { id: 'na2co3', formula: 'Na₂CO₃', name: 'Карбонат натрия' },
-  { id: 'cuso4', formula: 'CuSO₄', name: 'Сульфат меди(II)' },
-]
-
-const REAGENTS: { id: TestReagent; label: string }[] = [
-  { id: 'phenolphthalein', label: 'Фенолфталеин' },
-  { id: 'naoh_drop', label: 'NaOH (щёлочь)' },
-  { id: 'hcl_drop', label: 'HCl (кислота)' },
-  { id: 'bacl2_drop', label: 'BaCl₂ (хлорид бария)' },
-]
-
-interface Observation {
-  text: string
-  liquidColor: string
-  precipitateColor?: string
-  hasGas?: boolean
+interface TubeConfig {
+  id: string
+  number: number
+  formula: Formula
+  initialColor: string
 }
 
-function getReactionResult(sub: MysterySubstance, reagent: TestReagent): Observation {
+const TUBES: TubeConfig[] = [
+  { id: 'det-tube-1', number: 1, formula: 'NaOH', initialColor: 'rgba(226, 232, 240, 0.14)' },
+  { id: 'det-tube-2', number: 2, formula: 'HCl', initialColor: 'rgba(226, 232, 240, 0.14)' },
+  { id: 'det-tube-3', number: 3, formula: 'Na₂CO₃', initialColor: 'rgba(226, 232, 240, 0.14)' },
+  { id: 'det-tube-4', number: 4, formula: 'CuSO₄', initialColor: 'rgba(56, 189, 248, 0.35)' },
+]
+
+const FORMULAS: Formula[] = ['NaOH', 'HCl', 'Na₂CO₃', 'CuSO₄']
+
+const REAGENTS: { id: Reagent; label: string; short: string }[] = [
+  { id: 'phenolphthalein', label: 'Фенолфталеин', short: 'Ф/ф' },
+  { id: 'hcl', label: 'Кислота HCl', short: 'HCl' },
+  { id: 'bacl2', label: 'Хлорид бария BaCl₂', short: 'BaCl₂' },
+]
+
+function getReactionResult(formula: Formula, reagent: Reagent | null) {
+  if (!reagent) {
+    return {
+      color: formula === 'CuSO₄' ? 'rgba(56, 189, 248, 0.38)' : 'rgba(226, 232, 240, 0.14)',
+      effect: 'none' as const,
+      note: formula === 'CuSO₄' ? 'Голубой раствор' : 'Прозрачный раствор',
+    }
+  }
+
   if (reagent === 'phenolphthalein') {
-    if (sub === 'naoh' || sub === 'na2co3') {
-      return {
-        text: 'Малиновое окрашивание (щелочная среда)',
-        liquidColor: '#ec4899',
-      }
+    if (formula === 'NaOH' || formula === 'Na₂CO₃') {
+      return { color: 'rgba(236, 72, 153, 0.72)', effect: 'none' as const, note: 'Малиновый (OH⁻)' }
     }
     return {
-      text: 'Окраска не изменилась',
-      liquidColor: 'rgba(255, 255, 255, 0.16)',
+      color: formula === 'CuSO₄' ? 'rgba(56, 189, 248, 0.38)' : 'rgba(226, 232, 240, 0.14)',
+      effect: 'none' as const,
+      note: 'Окраска не изменилась',
     }
   }
 
-  if (reagent === 'naoh_drop') {
-    if (sub === 'cuso4') {
-      return {
-        text: '↓ Выпал голубой студенистый осадок Cu(OH)₂',
-        liquidColor: 'rgba(56, 189, 248, 0.22)',
-        precipitateColor: '#0284c7',
-      }
+  if (reagent === 'hcl') {
+    if (formula === 'Na₂CO₃') {
+      return { color: 'rgba(226, 232, 240, 0.22)', effect: 'gas' as const, note: 'Газ CO₂↑ («вскипание»)' }
     }
     return {
-      text: 'Видимых признаков реакции нет',
-      liquidColor: 'rgba(255, 255, 255, 0.16)',
-    }
-  }
-
-  if (reagent === 'hcl_drop') {
-    if (sub === 'na2co3') {
-      return {
-        text: '↑ Выделение газа без запаха (CO₂)',
-        liquidColor: 'rgba(255, 255, 255, 0.16)',
-        hasGas: true,
-      }
-    }
-    return {
-      text: 'Видимых признаков реакции нет',
-      liquidColor: 'rgba(255, 255, 255, 0.16)',
+      color: formula === 'CuSO₄' ? 'rgba(56, 189, 248, 0.38)' : 'rgba(226, 232, 240, 0.14)',
+      effect: 'none' as const,
+      note: 'Видимых признаков нет',
     }
   }
 
   // BaCl2
-  if (sub === 'cuso4' || sub === 'na2co3') {
-    return {
-      text: `↓ Выпал белый осадок (${sub === 'cuso4' ? 'BaSO₄' : 'BaCO₃'})`,
-      liquidColor: 'rgba(255, 255, 255, 0.16)',
-      precipitateColor: '#f8fafc',
-    }
+  if (formula === 'CuSO₄') {
+    return { color: 'rgba(125, 211, 252, 0.45)', effect: 'precipitate' as const, note: 'Белый осадок BaSO₄↓' }
   }
   return {
-    text: 'Осадок не выпадает',
-    liquidColor: 'rgba(255, 255, 255, 0.16)',
+    color: 'rgba(226, 232, 240, 0.14)',
+    effect: 'none' as const,
+    note: 'Осадок не выпадает',
   }
 }
 
 export function DetectiveWorld() {
   const { state, api } = useLab()
-  const [activeReagent, setActiveReagent] = useState<TestReagent>('phenolphthalein')
-  const [observations, setObservations] = useState<Record<number, Observation>>({})
-  const [guesses, setGuesses] = useState<Record<number, MysterySubstance | ''>>({
-    0: '',
-    1: '',
-    2: '',
-    3: '',
-  })
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [selectedReagent, setSelectedReagent] = useState<Reagent>('phenolphthalein')
+  const [testedWith, setTestedWith] = useState<Record<string, Reagent>>({})
+  const [guesses, setGuesses] = useState<Record<string, Formula | ''>>({})
 
-  // Перемешиваем вещества при каждом новом запуске
-  const hiddenTubes = useMemo<MysterySubstance[]>(() => {
-    const arr: MysterySubstance[] = ['naoh', 'hcl', 'na2co3', 'cuso4']
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    }
-    return arr
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.resetPose])
-
-  // Очищаем пробирки и ответы при нажатии «Начать заново»
-  useEffect(() => {
-    setObservations({})
-    setGuesses({ 0: '', 1: '', 2: '', 3: '' })
-    setErrorMsg(null)
-  }, [state.resetPose])
-
-  const handleTestTube = (index: number) => {
-    const res = getReactionResult(hiddenTubes[index], activeReagent)
-    setObservations((prev) => ({ ...prev, [index]: res }))
+  const handleDropReagent = (tubeId: string) => {
+    setTestedWith((prev) => ({ ...prev, [tubeId]: selectedReagent }))
   }
 
-  const handleCheckAnswers = () => {
-    let correctCount = 0
-    hiddenTubes.forEach((actual, idx) => {
-      if (guesses[idx] === actual) {
-        correctCount++
-        api.inspect(`tube-${idx}`, actual)
-      }
-    })
+  const handleGuess = (tube: TubeConfig, value: Formula | '') => {
+    setGuesses((prev) => ({ ...prev, [tube.id]: value }))
+    if (value === tube.formula && !state.studied.includes(tube.id)) {
+      api.inspect(tube.id, tube.id)
 
-    if (correctCount === 4) {
-      setErrorMsg(null)
-    } else {
-      setErrorMsg(`Верно определено ${correctCount} из 4 пробирок. Продолжай исследование!`)
     }
   }
 
   return (
     <div
+      className="h-dvh overflow-y-auto overscroll-none bg-[#070b14] px-3 pb-24 pt-40 text-slate-100 sm:px-6 sm:pt-36 lg:flex lg:flex-col lg:justify-center lg:pt-24"
       style={{
-        width: '100%',
-        height: '100vh',
-        background: 'radial-gradient(circle at center, #132d24 0%, #07140e 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '24px',
-        padding: '24px',
-        overflowY: 'auto',
+        backgroundImage: `
+          radial-gradient(circle at 50% 15%, rgba(56, 189, 248, 0.12) 0%, transparent 55%),
+          linear-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: '100% 100%, 36px 36px, 36px 36px',
       }}
     >
-      {/* Полка с реактивами для проб */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '8px',
-          alignItems: 'center',
-          padding: '10px 16px',
-          borderRadius: '16px',
-          border: '1px solid var(--line)',
-          background: 'var(--glass)',
-          marginTop: '48px',
-        }}
-      >
-        <span style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: 600 }}>
-          1. Выбери реактив для пробы:
-        </span>
-        {REAGENTS.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            className={activeReagent === r.id ? 'primary' : 'ghost'}
-            style={{ padding: '7px 12px', fontSize: '13px' }}
-            onClick={() => setActiveReagent(r.id)}
-          >
-            🧪 {r.label}
-          </button>
-        ))}
-      </div>
+      <div className="mx-auto w-full max-w-4xl">
+        {/* Панель выбора реактива в пипетке */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-slate-900/90 p-2.5 backdrop-blur-md sm:mb-6 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+            <Droplets className="h-4 w-4 text-sky-400" />
+            <span>Реактив в пипетке:</span>
+          </div>
 
-      {/* 4 одинаковые на вид неизвестные пробирки */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '28px' }}>
-        {hiddenTubes.map((_, idx) => {
-          const obs = observations[idx]
-          const isSolved = state.studied.includes(`tube-${idx}`)
+          <div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto">
+            {REAGENTS.map((r) => {
+              const active = selectedReagent === r.id
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setSelectedReagent(r.id)}
+                  className={`rounded-xl border px-2.5 py-1.5 font-mono text-xs font-bold transition ${
+                    active
+                      ? 'border-sky-400 bg-sky-500/20 text-sky-300'
+                      : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="sm:hidden">{r.short}</span>
+                  <span className="hidden sm:inline">{r.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-          return (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '10px',
-                width: '185px',
-                padding: '14px',
-                borderRadius: '18px',
-                border: isSolved ? '1px solid #4ade80' : '1px solid var(--line)',
-                background: 'rgba(7, 22, 15, 0.6)',
-              }}
-            >
-              <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--accent)' }}>
-                Пробирка №{idx + 1}
-              </div>
+        {/* Адаптивная сетка 4 пробирок (2x2 на телефоне, 4 в ряд на ПК) */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+          {TUBES.map((tube) => {
+            const activeReagent = testedWith[tube.id] ?? null
+            const reaction = getReactionResult(tube.formula, activeReagent)
+            const currentGuess = guesses[tube.id] ?? ''
+            const isSolved = state.studied.includes(tube.id) || currentGuess === tube.formula
+            const isWrong = Boolean(currentGuess) && currentGuess !== tube.formula
 
-              <button
-                type="button"
-                className="ghost"
-                style={{ padding: '6px 12px', fontSize: '12px' }}
-                onClick={() => handleTestTube(idx)}
-              >
-                Капнуть реактив
-              </button>
-
-              {/* Стеклянная пробирка */}
+            return (
               <div
-                onClick={() => handleTestTube(idx)}
-                style={{
-                  width: '64px',
-                  height: '150px',
-                  border: '2.5px solid rgba(198, 255, 214, 0.45)',
-                  borderTop: 'none',
-                  borderRadius: '0 0 32px 32px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                }}
+                key={tube.id}
+                className={`flex flex-col justify-between rounded-2xl border p-3 transition sm:p-4 ${
+                  isSolved
+                    ? 'border-emerald-400/60 bg-emerald-950/20'
+                    : 'border-slate-800 bg-slate-900/85'
+                }`}
               >
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '65%',
-                    backgroundColor: obs ? obs.liquidColor : 'rgba(255, 255, 255, 0.16)',
-                    transition: 'background-color 0.5s',
-                  }}
-                />
-                {obs?.precipitateColor && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: '25%',
-                      backgroundColor: obs.precipitateColor,
-                      borderRadius: '0 0 30px 30px',
-                    }}
-                  />
-                )}
-                {obs?.hasGas && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: '35% 12px 10px',
-                      textAlign: 'center',
-                      fontSize: '13px',
-                      color: '#fff',
-                    }}
-                  >
-                    ○ ◦ ○<br />◦ ○ ◦
+                {/* Заголовок пробирки */}
+                <div className="mb-2 flex items-center justify-between gap-1">
+                  <span className="font-mono text-xs font-extrabold text-white sm:text-sm">
+                    Пробирка №{tube.number}
+                  </span>
+                  {isSolved ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                  ) : (
+                    <HelpCircle className="h-4 w-4 shrink-0 text-slate-500" />
+                  )}
+                </div>
+
+                {/* Визуальная пробирка с раствором */}
+                <div className="my-2 flex flex-col items-center">
+                  <div className="relative flex h-24 w-11 flex-col justify-end overflow-hidden rounded-b-full border-2 border-slate-600/80 bg-slate-950/60 p-0.5 sm:h-32 sm:w-14">
+                    {/* Жидкость */}
+                    <div
+                      className="relative w-full rounded-b-full transition-all duration-500"
+                      style={{ height: '68%', backgroundColor: reaction.color }}
+                    >
+                      {/* Пузырьки газа */}
+                      {reaction.effect === 'gas' && (
+                        <div className="absolute inset-0 flex items-center justify-around opacity-90">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white" />
+                          <span className="h-2 w-2 animate-ping rounded-full bg-white" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white" />
+                        </div>
+                      )}
+                      {/* Осадок на дне */}
+                      {reaction.effect === 'precipitate' && (
+                        <div className="absolute bottom-0 left-0 right-0 h-3 rounded-b-full bg-white/90" />
+                      )}
+                    </div>
                   </div>
-                )}
+
+                  {/* Подпись признака */}
+                  <div className="mt-2 min-h-[28px] text-center text-[11px] font-medium leading-tight text-slate-300 sm:text-xs">
+                    {reaction.note}
+                  </div>
+                </div>
+
+                {/* Кнопка добавления реактива и выбор формулы */}
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleDropReagent(tube.id)}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 px-2.5 py-2 text-xs font-extrabold text-slate-950 transition hover:opacity-95"
+                  >
+                    <FlaskConical className="h-3.5 w-3.5 shrink-0" />
+                    <span>+ Реактив</span>
+                  </button>
+
+                  <select
+                    value={isSolved ? tube.formula : currentGuess}
+                    disabled={isSolved}
+                    onChange={(e) => handleGuess(tube, e.target.value as Formula | '')}
+                    className={`w-full rounded-xl border px-2 py-2 font-mono text-xs font-bold outline-none transition ${
+                      isSolved
+                        ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
+                        : isWrong
+                        ? 'border-rose-500/60 bg-rose-500/10 text-rose-300'
+                        : 'border-slate-700 bg-slate-950 text-slate-200 focus:border-sky-400'
+                    }`}
+                  >
+                    <option value="">Выбери формулу...</option>
+                    {FORMULAS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-
-              {/* Наблюдение */}
-              <div
-                style={{
-                  minHeight: '34px',
-                  fontSize: '12px',
-                  textAlign: 'center',
-                  color: obs ? '#e0f2fe' : 'var(--muted)',
-                }}
-              >
-                {obs ? obs.text : 'Нажми на пробирку, чтобы провести пробу'}
-              </div>
-
-              {/* Выбор ответа учеником (заблокирован до первой пробы) */}
-              <select
-                value={guesses[idx]}
-                disabled={isSolved || !obs}
-                onChange={(e) =>
-                  setGuesses((prev) => ({ ...prev, [idx]: e.target.value as MysterySubstance }))
-                }
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--line)',
-                  background: '#0c2419',
-                  color: !obs ? 'var(--muted)' : '#fff',
-                  fontSize: '13px',
-                  opacity: !obs ? 0.6 : 1,
-                }}
-              >
-                <option value="">
-                <option value="">
-                  {!obs ? 'Сначала капни реактив ↑' : '🏷️ Этикетка: Что внутри?'}
-                </option>
-
-                </option>
-                {SUBSTANCES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.formula} ({s.name})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Кнопка проверки всех 4 пробирок */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-        {errorMsg && <div style={{ color: '#fca5a5', fontSize: '14px', fontWeight: 600 }}>{errorMsg}</div>}
-        {state.studied.length < 4 && (
-          <button type="button" className="primary" onClick={handleCheckAnswers}>
-            Проверить все 4 этикетки
-          </button>
-        )}
+            )
+          })}
+        </div>
       </div>
     </div>
   )

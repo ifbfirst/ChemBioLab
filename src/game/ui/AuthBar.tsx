@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { ChevronDown, GraduationCap, KeyRound, LogIn, LogOut } from 'lucide-react'
 import { joinTeacherByCode } from '../../platform/classroom'
 import { auth, db, googleProvider } from '../../platform/firebase'
 import { pullCloudProgress } from '../../platform/progress'
@@ -77,102 +78,52 @@ export function AuthBar({
       <button
         type="button"
         onClick={handleLogin}
-        style={{
-          padding: '10px 18px',
-          borderRadius: '14px',
-          border: '2px solid #e2e8f0',
-          borderBottom: '4px solid #cbd5e1',
-          background: '#ffffff',
-          color: '#1e293b',
-          fontSize: '14px',
-          fontWeight: 800,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-3.5 py-2 text-xs font-bold text-slate-100 transition hover:border-emerald-400/60 hover:bg-slate-800 sm:text-sm"
       >
-        <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#58cc02' }} />
-        Войти через Google
+        <LogIn className="h-4 w-4 text-emerald-400" />
+        <span>Войти</span>
       </button>
     )
   }
 
-  const shortName = user.displayName?.split(' ') || user.email?.split('@') || 'Профиль'
+  const rawName = user.displayName?.trim() || user.email?.split('@')[0] || 'Профиль'
+  const firstName = rawName.split(' ')[0]
 
   return (
-    <div ref={menuRef} style={{ position: 'relative' }}>
+    <div ref={menuRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setMenuOpen((prev) => !prev)}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '7px 14px',
-          borderRadius: '14px',
-          border: '2px solid #e2e8f0',
-          borderBottom: '4px solid #cbd5e1',
-          background: '#ffffff',
-          color: '#1e293b',
-          fontSize: '14px',
-          fontWeight: 800,
-        }}
+        className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-2.5 py-1.5 text-xs font-bold text-slate-100 transition hover:border-slate-700 hover:bg-slate-800 sm:px-3 sm:text-sm"
       >
         {user.photoURL ? (
           <img
             src={user.photoURL}
             alt=""
-            style={{ width: '26px', height: '26px', borderRadius: '50%' }}
+            className="h-6 w-6 shrink-0 rounded-full ring-1 ring-slate-700"
           />
         ) : (
-          <span
-            style={{
-              width: '26px',
-              height: '26px',
-              borderRadius: '50%',
-              background: '#58cc02',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              color: '#ffffff',
-              fontWeight: 900,
-            }}
-          >
-            {typeof shortName === 'string' ? shortName.toUpperCase() : ''}
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-sky-400 text-xs font-extrabold text-slate-950">
+            {firstName[0]?.toUpperCase() ?? 'U'}
           </span>
         )}
-        <span>{shortName}</span>
-        <span style={{ color: '#94a3b8', fontSize: '10px' }}>▼</span>
+        <span className="max-w-[90px] truncate sm:max-w-[140px]">{firstName}</span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 text-slate-400 transition-transform ${
+            menuOpen ? 'rotate-180' : ''
+          }`}
+        />
       </button>
 
       {menuOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            top: 'calc(100% + 10px)',
-            width: '240px',
-            padding: '10px',
-            borderRadius: '18px',
-            border: '2px solid #e2e8f0',
-            background: '#ffffff',
-            boxShadow: '0 16px 36px rgba(15, 23, 42, 0.14)',
-            zIndex: 60,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '4px',
-          }}
-        >
-          <div style={{ padding: '6px 10px', borderBottom: '2px solid #f1f5f9', marginBottom: '4px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: '#1e293b' }}>
+        <div className="absolute right-0 top-[calc(100%+10px)] z-50 flex w-[min(256px,calc(100vw-24px))] flex-col gap-1 rounded-2xl border border-slate-800 bg-slate-900/95 p-2 shadow-2xl shadow-black/70 backdrop-blur-xl">
+          <div className="mb-1 border-b border-slate-800/80 px-3 py-2.5">
+            <div className="truncate text-xs font-extrabold text-white">
               {user.displayName || 'Пользователь'}
             </div>
-            <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {user.email}
-            </div>
+            <div className="truncate text-[11px] text-slate-400">{user.email}</div>
             {teacherName && (
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#58cc02', marginTop: '4px' }}>
+              <div className="mt-1.5 inline-block rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
                 Учитель: {teacherName}
               </div>
             )}
@@ -185,18 +136,10 @@ export function AuthBar({
                 setMenuOpen(false)
                 onOpenTeacher()
               }}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '12px',
-                border: 'none',
-                background: '#e0f2fe',
-                color: '#0284c7',
-                fontSize: '13px',
-                fontWeight: 800,
-                textAlign: 'left',
-              }}
+              className="flex items-center gap-2.5 rounded-xl bg-sky-500/10 px-3 py-2.5 text-left text-xs font-bold text-sky-400 transition hover:bg-sky-500/20"
             >
-              🎓 Журнал моего класса
+              <GraduationCap className="h-4 w-4 shrink-0" />
+              <span>Журнал моего класса</span>
             </button>
           )}
 
@@ -204,18 +147,10 @@ export function AuthBar({
             <button
               type="button"
               onClick={handleJoinClass}
-              style={{
-                padding: '9px 12px',
-                borderRadius: '12px',
-                border: 'none',
-                background: 'transparent',
-                color: '#1e293b',
-                fontSize: '13px',
-                fontWeight: 700,
-                textAlign: 'left',
-              }}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-slate-200 transition hover:bg-slate-800"
             >
-              🔑 Ввести код учителя
+              <KeyRound className="h-4 w-4 shrink-0 text-slate-400" />
+              <span>Ввести код учителя</span>
             </button>
           )}
 
@@ -225,18 +160,10 @@ export function AuthBar({
               setMenuOpen(false)
               signOut(auth)
             }}
-            style={{
-              padding: '9px 12px',
-              borderRadius: '12px',
-              border: 'none',
-              background: 'transparent',
-              color: '#ef4444',
-              fontSize: '13px',
-              fontWeight: 700,
-              textAlign: 'left',
-            }}
+            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-rose-400 transition hover:bg-rose-500/10"
           >
-            Выйти из аккаунта
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span>Выйти из аккаунта</span>
           </button>
         </div>
       )}

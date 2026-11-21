@@ -10,7 +10,7 @@ import { chemQualitativePack } from '../labs/chemistry/grade-8/qualitative/quali
 import { chemDetectivePack } from '../labs/chemistry/grade-9/detective/detectivePack'
 
 const LazyLeafWorld = lazy(() =>
-  import('../game/world/LeafWorld').then((m) => ({ default: m.LeafWorld })),
+  import('../labs/biology/grade-6/photosynthesis/LeafWorld').then((m) => ({ default: m.LeafWorld })),
 )
 const LazyBioCellWorld = lazy(() =>
   import('../labs/biology/grade-10/cell/CellStructureWorld').then((m) => ({
