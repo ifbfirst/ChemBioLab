@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { CheckCircle2, Microscope } from 'lucide-react'
+import { Microscope } from 'lucide-react'
 import * as THREE from 'three'
 import { useLab } from '../../../../game/state'
 

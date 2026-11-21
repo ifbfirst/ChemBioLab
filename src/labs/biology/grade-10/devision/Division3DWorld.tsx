@@ -154,12 +154,14 @@ function SpindleThread({
   )
 }
 export function Division3DWorld({
-  mode,
-  phase,
+  mode = 'mitosis',
+  phase = 'prophase',
 }: {
-  mode: DivisionMode
-  phase: DivisionPhase
+  mode?: DivisionMode
+  phase?: DivisionPhase
+  markerIds?: readonly string[]
 }) {
+
   const { facts, api } = useLab()
   const { size } = useThree()
   const rootRef = useRef<Group>(null)

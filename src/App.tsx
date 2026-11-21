@@ -8,9 +8,9 @@ import {
   FlaskConical,
   Leaf,
   Microscope,
-  Play,
+
   Search,
-  Sparkles,
+  
   TestTube2,
 } from 'lucide-react'
 import { Experience } from './game/Experience'
@@ -212,12 +212,7 @@ export function App() {
     return loadProgress(p.storageKey).length >= total && isQuizPassed(p.storageKey)
   }).length
 
-  const activePack = allPacks.find((p) => {
-    const done = loadProgress(p.storageKey).length
-    const total = catalog[p.id]?.totalSteps ?? 1
-    const quizDone = isQuizPassed(p.storageKey)
-    return done > 0 && !(done >= total && quizDone)
-  })
+  
 
   const query = search.trim().toLowerCase()
 

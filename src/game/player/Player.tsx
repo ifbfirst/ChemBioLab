@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Vector3, type Group, type Mesh } from 'three'
-import { BillboardGlow } from '../world/bits'
 import { consumeLook, debugPose, debugTeleport, input } from '../input'
 import { useLab } from '../state'
 
@@ -310,7 +309,7 @@ export function Player() {
           <torusGeometry args={[0.4, 0.028, 8, 28]} />
           <meshStandardMaterial color="#f6ffd8" emissive="#e4ff6a" emissiveIntensity={1.05} roughness={0.3} />
         </mesh>
-        <BillboardGlow color="#e4ff9a" size={0.55} opacity={0.32} />
+        
         <pointLight intensity={8} distance={8} decay={2} color="#f0ffd8" />
       </group>
       <mesh ref={halo} rotation-x={-Math.PI / 2} position={[pack.spawn[0], 0.08, pack.spawn[2]]}>
